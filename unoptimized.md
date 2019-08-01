@@ -1,57 +1,118 @@
-### Any
+## Choice
 ```js
-if (end < length) {
+savedEnd = end
+// expressionA
+if (result == error) {
+  end = savedEnd
+  // expressionB
+  if (result == error) {
+    end = savedEnd
+    // expressionC
+  }
+}
+```
+
+## Action
+```js
+savedEnd = end
+// expression
+if (result != error) {
   if (capturing) {
-    result = input[end]
+    begin = savedEnd
+    result = map()
+  }
+}
+```
+
+## Type
+```js
+savedEnd = end
+// expression
+if (result != error) {
+  if (capturing) {
+    begin = savedEnd
+    result = {type: 'Name', location: location()}
+  }
+}
+```
+
+## Sequence
+```js
+// expressionA
+if (resultA != error) {
+  // expressionB
+  if (resultB != error) {
+    // expressionC
+    if (resultC != error) {
+      result = [resultA, resultB, resultC]
+    } else {
+      result = error
+    }
   } else {
-    result = ''
+    result = error
   }
-  end++
 } else {
-  if (reporting) {
-    report('any')
-  }
   result = error
 }
 ```
 
-## Char
+## Empty
 ```js
-if (end < length && input[end] == 'x') {
+savedCapturing = capturing
+capturing = false
+// expression
+capturing = savedCapturing
+```
+
+## Text
+```js
+savedEnd = end
+savedCapturing = capturing
+capturing = false
+// expression
+capturing = savedCapturing
+if (result != error) {
   if (capturing) {
-    result = 'x'
-  } else {
-    result = ''
+    result = substring(savedEnd, end)
   }
-  end++
-} else {
-  if (reporting) {
-    report("'x'")
-  }
-  result = error
 }
 ```
 
-## Range
-```js
-if (end < length && (char = input[end]) >= 'x' && char <= 'y') {
-  if (capturing) {
-    result = char
-  } else {
-    result = ''
-  }
-  end++
-} else {
-  if (reporting) {
-    report("'x'..'y'")
-  }
-  result = error
-}
+## And
+```
+savedEnd = end
+savedCapturing = capturing
+savedReporting = reporting
+capturing = false
+reporting = false
+// expression
+end = savedEnd
+capturing = savedCapturing
+reporting = savedReporting
 ```
 
-## Reference
+## Not
+```
+savedEnd = end
+savedCapturing = capturing
+savedReporting = reporting
+capturing = false
+reporting = false
+// expression
+end = savedEnd
+capturing = savedCapturing
+reporting = savedReporting
+result = result == error ? '' : error
+```
+
+## Optional
 ```js
-result = parseName()
+savedEnd = end
+// expression
+if (result == error) {
+  end = savedEnd
+  result = null
+}
 ```
 
 ## Zero
@@ -101,107 +162,99 @@ if (result != error) {
 }
 ```
 
-## Choice
+## Reference
 ```js
-savedEnd = end
-// expressionA
-if (result == error) {
-  end = savedEnd
-  // expressionB
-  if (result == error) {
-    end = savedEnd
-    // expressionC
-  }
-}
+result = parseName()
 ```
 
-## Sequence
+## Class (Case Sensitive)
 ```js
-// expressionA
-if (resultA != error) {
-  // expressionB
-  if (resultB != error) {
-    // expressionC
-    if (resultC != error) {
-      result = [resultA, resultB, resultC]
-    } else {
+if (end < length) {
+  char = input[end]
+  switch (char) {
+    case 'a':
+    case 'b':
+      result = char
+      end++
+      break
+    default:
+      if (reporting) {
+        report('[a-b]')
+      }
       result = error
-    }
-  } else {
-    result = error
   }
 } else {
+  if (reporting) {
+    report('[a-b]')
+  }
   result = error
 }
 ```
 
-## And
-```
-savedEnd = end
-savedCapturing = capturing
-savedReporting = reporting
-capturing = false
-reporting = false
-// expression
-end = savedEnd
-capturing = savedCapturing
-reporting = savedReporting
-```
-
-## Not
-```
-savedEnd = end
-savedCapturing = capturing
-savedReporting = reporting
-capturing = false
-reporting = false
-// expression
-end = savedEnd
-capturing = savedCapturing
-reporting = savedReporting
-result = result == error ? '' : error
-```
-
-## Optional
+## Literal (Case Sensitive)
 ```js
-savedEnd = end
-// expression
-if (result == error) {
-  end = savedEnd
-  result = null
-}
-```
-
-## Action
-```js
-savedEnd = end
-// expression
-if (result != error) {
+if (end + 3 < length && input.substr(end, 3) == 'foo') {
   if (capturing) {
-    begin = savedEnd
-    result = map()
+    result = 'foo'
+  } else {
+    result = ''
   }
+  end += 3
+} else {
+  if (reporting) {
+    report('"foo"')
+  }
+  result = error
 }
 ```
 
-## Text
+## Range
 ```js
-savedEnd = end
-savedCapturing = capturing
-capturing = false
-// expression
-capturing = savedCapturing
-if (result != error) {
+if (end < length && (char = input[end]) >= 'x' && char <= 'y') {
   if (capturing) {
-    result = substring(savedEnd, end)
+    result = char
+  } else {
+    result = ''
   }
+  end++
+} else {
+  if (reporting) {
+    report("'x'..'y'")
+  }
+  result = error
 }
 ```
 
-## Empty
+## Char
 ```js
-savedCapturing = capturing
-capturing = false
-// expression
-capturing = savedCapturing
+if (end < length && input[end] == 'x') {
+  if (capturing) {
+    result = 'x'
+  } else {
+    result = ''
+  }
+  end++
+} else {
+  if (reporting) {
+    report("'x'")
+  }
+  result = error
+}
+```
+
+## Any
+```js
+if (end < length) {
+  if (capturing) {
+    result = input[end]
+  } else {
+    result = ''
+  }
+  end++
+} else {
+  if (reporting) {
+    report('any')
+  }
+  result = error
+}
 ```
