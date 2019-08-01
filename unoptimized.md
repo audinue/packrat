@@ -56,17 +56,47 @@ result = parseName()
 
 ## Zero
 ```js
-savedEnd = end
-list = []
+if (capturing) {
+  list = []
+}
 while (true) {
+  savedEnd = end
   // expression
   if (result == error) {
     end = savedEnd
-    result = list
+    if (capturing) {
+      result = list
+    } else {
+      result = ''
+    }
     break
-  } else {
+  } else if (capturing) {
     list.push(result)
+  }
+}
+```
+
+## One
+```js
+// expression
+if (result != error) {
+  if (capturing) {
+    list = [result]
+  }
+  while (true) {
     savedEnd = end
+    // expression
+    if (result == error) {
+      end = savedEnd
+      if (capturing) {
+        result = list
+      } else {
+        result = ''
+      }
+      break
+    } else if (capturing) {
+      list.push(result)
+    }
   }
 }
 ```
@@ -138,6 +168,40 @@ savedEnd = end
 // expression
 if (result == error) {
   end = savedEnd
-  result = ''
+  result = null
 }
+```
+
+## Action
+```js
+savedEnd = end
+// expression
+if (result != error) {
+  if (capturing) {
+    begin = savedEnd
+    result = map()
+  }
+}
+```
+
+## Text
+```js
+savedEnd = end
+savedCapturing = capturing
+capturing = false
+// expression
+capturing = savedCapturing
+if (result != error) {
+  if (capturing) {
+    result = substring(savedEnd, end)
+  }
+}
+```
+
+## Empty
+```js
+savedCapturing = capturing
+capturing = false
+// expression
+capturing = savedCapturing
 ```
