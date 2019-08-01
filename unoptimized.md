@@ -34,19 +34,11 @@ if (end < length && input[end] == 'x') {
 
 ## Range
 ```js
-if (end < length) {
-  char = input[end]
-  if (char >= 'x' && char <= 'y') {
-    if (capturing) {
-      result = char
-    } else {
-      result = ''
-    }
+if (end < length && (char = input[end]) >= 'x' && char <= 'y') {
+  if (capturing) {
+    result = char
   } else {
-    if (reporting) {
-      report("'x'..'y'")
-    }
-    result = error
+    result = ''
   }
   end++
 } else {
@@ -54,5 +46,39 @@ if (end < length) {
     report("'x'..'y'")
   }
   result = error
+}
+```
+
+## Reference
+```js
+result = parseName()
+```
+
+## Zero
+```js
+list = []
+while (true) {
+  savedOffset = offset
+  // expression
+  if (result == error) {
+    result = list
+    break
+  } else {
+    list.push(result)
+  }
+}
+```
+
+## Choice
+```js
+savedOffset = offset
+// expressionA
+if (result == error) {
+  offset = savedOffset
+  // expressionB
+  if (result == error) {
+    offset = savedOffset
+    // expressionC
+  }
 }
 ```
