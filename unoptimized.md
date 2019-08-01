@@ -117,20 +117,26 @@ if (result == error) {
 ```js
 if (capturing) {
   list = []
-}
-while (true) {
-  savedEnd = end
-  // expression
-  if (result == error) {
-    end = savedEnd
-    if (capturing) {
+  while (true) {
+    savedEnd = end
+    // expression
+    if (result == error) {
+      end = savedEnd
       result = list
+      break
     } else {
-      result = empty
+      list.push(result)
     }
-    break
-  } else if (capturing) {
-    list.push(result)
+  }
+} else {
+  while (true) {
+    savedEnd = end
+    // expression
+    if (result == error) {
+      end = savedEnd
+      result = empty
+      break
+    }
   }
 }
 ```
@@ -141,20 +147,26 @@ while (true) {
 if (result != error) {
   if (capturing) {
     list = [result]
-  }
-  while (true) {
-    savedEnd = end
-    // expression
-    if (result == error) {
-      end = savedEnd
-      if (capturing) {
+    while (true) {
+      savedEnd = end
+      // expression
+      if (result == error) {
+        end = savedEnd
         result = list
+        break
       } else {
-        result = empty
+        list.push(result)
       }
-      break
-    } else if (capturing) {
-      list.push(result)
+    }
+  } else {
+    while (true) {
+      savedEnd = end
+      // expression
+      if (result == error) {
+        end = savedEnd
+        result = empty
+        break
+      }
     }
   }
 }
