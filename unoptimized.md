@@ -56,29 +56,88 @@ result = parseName()
 
 ## Zero
 ```js
+savedEnd = end
 list = []
 while (true) {
-  savedOffset = offset
   // expression
   if (result == error) {
+    end = savedEnd
     result = list
     break
   } else {
     list.push(result)
+    savedEnd = end
   }
 }
 ```
 
 ## Choice
 ```js
-savedOffset = offset
+savedEnd = end
 // expressionA
 if (result == error) {
-  offset = savedOffset
+  end = savedEnd
   // expressionB
   if (result == error) {
-    offset = savedOffset
+    end = savedEnd
     // expressionC
   }
+}
+```
+
+## Sequence
+```js
+// expressionA
+if (resultA != error) {
+  // expressionB
+  if (resultB != error) {
+    // expressionC
+    if (resultC != error) {
+      result = [resultA, resultB, resultC]
+    } else {
+      result = error
+    }
+  } else {
+    result = error
+  }
+} else {
+  result = error
+}
+```
+
+## And
+```
+savedEnd = end
+savedCapturing = capturing
+savedReporting = reporting
+capturing = false
+reporting = false
+// expression
+end = savedEnd
+capturing = savedCapturing
+reporting = savedReporting
+```
+
+## Not
+```
+savedEnd = end
+savedCapturing = capturing
+savedReporting = reporting
+capturing = false
+reporting = false
+// expression
+end = savedEnd
+capturing = savedCapturing
+reporting = savedReporting
+result = result == error ? '' : error
+```
+
+## Optional
+```js
+savedEnd = end
+// expression
+if (result == error) {
+  end = savedEnd
+  result = ''
 }
 ```
