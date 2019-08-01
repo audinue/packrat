@@ -16,11 +16,9 @@ if (result == error) {
 ```js
 savedEnd = end
 // expression
-if (result != error) {
-  if (capturing) {
-    begin = savedEnd
-    result = map()
-  }
+if (result != error && capturing) {
+  begin = savedEnd
+  result = map()
 }
 ```
 
@@ -28,11 +26,9 @@ if (result != error) {
 ```js
 savedEnd = end
 // expression
-if (result != error) {
-  if (capturing) {
-    begin = savedEnd
-    result = {type: 'Name', location: location()}
-  }
+if (result != error && capturing) {
+  begin = savedEnd
+  result = {type: 'Name', location: location()}
 }
 ```
 
@@ -44,7 +40,11 @@ if (resultA != error) {
   if (resultB != error) {
     // expressionC
     if (resultC != error) {
-      result = [resultA, resultB, resultC]
+      if (capturing) {
+        result = [resultA, resultB, resultC]
+      } else {
+        result = ''
+      }
     } else {
       result = error
     }
@@ -71,10 +71,8 @@ savedCapturing = capturing
 capturing = false
 // expression
 capturing = savedCapturing
-if (result != error) {
-  if (capturing) {
-    result = substring(savedEnd, end)
-  }
+if (result != error && capturing) {
+  result = substring(savedEnd, end)
 }
 ```
 
@@ -102,7 +100,7 @@ reporting = false
 end = savedEnd
 capturing = savedCapturing
 reporting = savedReporting
-result = result == error ? '' : error
+result = result == error ? empty : error
 ```
 
 ## Optional
@@ -128,7 +126,7 @@ while (true) {
     if (capturing) {
       result = list
     } else {
-      result = ''
+      result = empty
     }
     break
   } else if (capturing) {
@@ -152,7 +150,7 @@ if (result != error) {
       if (capturing) {
         result = list
       } else {
-        result = ''
+        result = empty
       }
       break
     } else if (capturing) {
@@ -174,7 +172,11 @@ if (end < length) {
   switch (char) {
     case 'a':
     case 'b':
-      result = char
+      if (capturing) {
+        result = char
+      } else {
+        result = empty
+      }
       end++
       break
     default:
@@ -197,7 +199,7 @@ if (end + 3 < length && input.substr(end, 3) == 'foo') {
   if (capturing) {
     result = 'foo'
   } else {
-    result = ''
+    result = empty
   }
   end += 3
 } else {
@@ -214,7 +216,7 @@ if (end < length && (char = input[end]) >= 'x' && char <= 'y') {
   if (capturing) {
     result = char
   } else {
-    result = ''
+    result = empty
   }
   end++
 } else {
@@ -231,7 +233,7 @@ if (end < length && input[end] == 'x') {
   if (capturing) {
     result = 'x'
   } else {
-    result = ''
+    result = empty
   }
   end++
 } else {
@@ -248,7 +250,7 @@ if (end < length) {
   if (capturing) {
     result = input[end]
   } else {
-    result = ''
+    result = empty
   }
   end++
 } else {
