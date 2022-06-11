@@ -1,0 +1,76 @@
+// For testing
+
+Grammar
+	= _ rules:( ^Rule _ )+ -> Grammar
+
+Rule
+	= name:Id alias:( _ ^String )? _ '=' _ child:Choice -> Rule
+
+Choice
+	= head:Tag tail:( _ '/' _ ^Tag )+ -> Choice
+	/ Tag
+
+Tag
+	= value:Seq _ '->' _ name:Id -> Tag
+	/ Seq
+
+Seq
+	= head:Prop tail:( __ ^Prop )+ -> Seq
+	/ Prop
+
+Prop
+	= op:( '^' -> Pull / name:Id ':' -> Key ) value:Prefix -> Prop
+	/ Prefix
+
+Prefix
+	= op:[$&!] value:Postfix -> Prefix
+	/ Postfix
+
+Postfix
+	= value:Term op:[?*+] -> Postfix
+	/ Term
+
+Term
+	= Ref / Str / Char / Any / Group
+
+Ref
+	= name:Id !( ( _ Str )? _ '=' ) -> Ref
+
+Str
+	= value:String -> Str
+
+Char 'char'
+	= '[' predicates:( Escape / Range / Eq )* ']' -> Char
+
+Any
+	= '.' -> Any
+
+Group
+	= '(' _ ^Choice _ ')'
+
+Escape
+	= '\\' value:. -> Escape
+
+Range
+	= min:. '-' max:. -> Range
+
+Eq
+	= !']' value:. -> Eq
+
+String 'string'
+	= "'" ^$( '\\' . / !"'" . )* "'"
+	/ '"' ^$( '\\' . / !'"' . )* '"'
+
+Id 'identifier'
+	= $( [A-Za-z_] [A-Za-z0-9_]* )
+
+_
+	= Skip*
+
+__
+	= Skip+
+
+Skip 'whitespace'
+	= [ \t\r\n]
+	/ '//' ( ![\r\n] . )*
+	/ '/*' ( !'*/' . )* '*/'
