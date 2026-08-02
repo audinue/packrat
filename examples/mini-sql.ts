@@ -1,6 +1,4 @@
-// mini-sql.ts
-
-import { packrat, isNode, type Ok, ParseError } from './packrat'
+import { packrat, isNode, type Ok, ParseError } from '../packrat'
 
 // ---- SQL Grammar ----
 

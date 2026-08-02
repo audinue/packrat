@@ -1,6 +1,4 @@
-// mini-golang.ts
-
-import { packrat, isNode, type Ok, type Node } from './packrat'
+import { packrat, isNode, type Ok, type Node } from '../packrat'
 
 // ─── AST Node Helpers ────────────────────────────────────────────────
 

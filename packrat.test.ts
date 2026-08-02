@@ -1,5 +1,3 @@
-// packrat.test.ts
-
 import { describe, expect, test } from 'bun:test'
 import { evaluateGrammar, packrat, packratGrammar, parseGrammar } from './packrat'
 

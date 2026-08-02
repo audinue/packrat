@@ -1,4 +1,4 @@
-import { isNode, packrat } from './packrat'
+import { isNode, packrat } from '../packrat'
 
 const parsePy = packrat`
   Program = Newlines* statements:(^Statement Newlines*)+ Newlines* _ -> Program

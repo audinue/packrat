@@ -1,4 +1,4 @@
-import { isNode, packrat } from './packrat'
+import { isNode, packrat } from '../packrat'
 
 const parsePug = packrat`
   Pug = Newlines* elements:(^Element Newlines*)+ Newlines* _ -> Pug

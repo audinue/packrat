@@ -1,5 +1,3 @@
-// mini-sql.test.ts
-
 import { describe, expect, test } from 'bun:test'
 import { miniSql } from './mini-sql'
 

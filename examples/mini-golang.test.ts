@@ -1,5 +1,3 @@
-// mini-golang.test.ts
-
 import { expect, test, describe } from 'bun:test'
 import { runGo, parseGo } from './mini-golang'
 

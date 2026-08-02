@@ -1,5 +1,3 @@
-// packrat.ts
-
 type Grammar = { rules: Rule[] }
 
 type Rule = { name: string, expression: Expression }
