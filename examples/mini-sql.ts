@@ -1,7 +1,5 @@
 import { packrat, isNode, type Ok, ParseError } from '../packrat'
 
-// ---- SQL Grammar ----
-
 const parseSql = packrat`
   Query = _ "SELECT"i _ columns:SelectColumns _ "FROM"i _ table:Id _ where:WhereClause? _ orderBy:OrderByClause? _ limit:LimitClause? _ -> Query
   SelectColumns = "*" -> Star / columns:SelectColumn { 1 ; _ "," _ } -> Columns
@@ -30,11 +28,7 @@ const parseSql = packrat`
   MultiLineComment = "/*" ( ~"*/" )* "*/"
 `
 
-// ---- Types ----
-
 type Db = Record<string, Record<string, any>[]>
-
-// ---- Evaluator ----
 
 function evaluateCondition (node: any, row: Record<string, any>): boolean {
   if (!isNode(node)) throw new Error('Invalid condition node')
@@ -109,8 +103,6 @@ function resolveRowKey (row: Record<string, any>, columnName: string): string {
   return key ?? columnName
 }
 
-// ---- Public API ----
-
 export function miniSql (sql: string, db: Db): Record<string, any>[] {
   let ast: Ok
   try {
@@ -121,11 +113,9 @@ export function miniSql (sql: string, db: Db): Record<string, any>[] {
     }
     throw e
   }
-
   if (!isNode(ast) || ast.tag !== 'Query') {
     throw new Error('Invalid SQL query')
   }
-
   const query = ast as any
   const tableName = query.table as string
   const tableKey = Object.keys(db).find(k => k.toLowerCase() === tableName.toLowerCase())
@@ -133,16 +123,11 @@ export function miniSql (sql: string, db: Db): Record<string, any>[] {
   if (table === undefined) {
     throw new Error(`Table not found: ${tableName}`)
   }
-
   let rows = [...table]
-
-  // WHERE
   if (query.where && isNode(query.where)) {
     const condition = (query.where as any).condition
     rows = rows.filter(row => evaluateCondition(condition, row))
   }
-
-  // ORDER BY
   if (query.orderBy && isNode(query.orderBy)) {
     const orderings = ((query.orderBy as any).orderings as Ok[]).filter(isNode) as any[]
     for (let i = orderings.length - 1; i >= 0; i--) {
@@ -161,8 +146,6 @@ export function miniSql (sql: string, db: Db): Record<string, any>[] {
       })
     }
   }
-
-  // LIMIT
   if (query.limit && isNode(query.limit)) {
     const limitNode = (query.limit as any).value
     if (isNode(limitNode) && limitNode.tag === 'NumberLiteral') {
@@ -170,17 +153,13 @@ export function miniSql (sql: string, db: Db): Record<string, any>[] {
       rows = rows.slice(0, limit)
     }
   }
-
-  // Column selection
   const columns = query.columns as any
   if (!isNode(columns)) {
     throw new Error('Invalid columns in query')
   }
-
   if (columns.tag === 'Star') {
     return rows.map(row => ({ ...row }))
   }
-
   if (columns.tag === 'Columns') {
     const selectColumns = (columns.columns as Ok[]).filter(isNode) as any[]
     return rows.map(row => {
@@ -197,6 +176,5 @@ export function miniSql (sql: string, db: Db): Record<string, any>[] {
       return result
     })
   }
-
   throw new Error(`Invalid columns type: ${columns.tag}`)
 }

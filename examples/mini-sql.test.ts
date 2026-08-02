@@ -21,8 +21,6 @@ const orders: Row[] = [
 const db = { users, orders }
 
 describe('miniSql', () => {
-  // ---- SELECT * ----
-
   describe('SELECT *', () => {
     test('returns all rows and columns', () => {
       const result = miniSql('SELECT * FROM users', db)
@@ -42,8 +40,6 @@ describe('miniSql', () => {
       expect(db.users[0]!.name).toBe('Alice')
     })
   })
-
-  // ---- SELECT columns ----
 
   describe('SELECT columns', () => {
     test('selects specific columns', () => {
@@ -78,8 +74,6 @@ describe('miniSql', () => {
       expect(result).toEqual([{ name: 'Alice' }])
     })
   })
-
-  // ---- WHERE ----
 
   describe('WHERE', () => {
     test('equality with string', () => {
@@ -183,8 +177,6 @@ describe('miniSql', () => {
     })
   })
 
-  // ---- ORDER BY ----
-
   describe('ORDER BY', () => {
     test('ascending (default)', () => {
       const result = miniSql('SELECT name, age FROM users ORDER BY age', db)
@@ -213,8 +205,6 @@ describe('miniSql', () => {
     })
   })
 
-  // ---- LIMIT ----
-
   describe('LIMIT', () => {
     test('limits result count', () => {
       const result = miniSql('SELECT * FROM users LIMIT 3', db)
@@ -232,8 +222,6 @@ describe('miniSql', () => {
       expect(result).toEqual([])
     })
   })
-
-  // ---- Combined clauses ----
 
   describe('combined clauses', () => {
     test('WHERE + ORDER BY', () => {
@@ -270,8 +258,6 @@ describe('miniSql', () => {
     })
   })
 
-  // ---- Case insensitivity ----
-
   describe('case insensitivity', () => {
     test('lowercase keywords', () => {
       const result = miniSql('select name from users limit 2', db)
@@ -283,8 +269,6 @@ describe('miniSql', () => {
       expect(result).toEqual([{ name: 'Charlie' }])
     })
   })
-
-  // ---- Whitespace tolerance ----
 
   describe('whitespace', () => {
     test('extra spaces between tokens', () => {
@@ -307,8 +291,6 @@ describe('miniSql', () => {
       expect(result).toEqual([{ name: 'Alice' }])
     })
   })
-
-  // ---- Error handling ----
 
   describe('errors', () => {
     test('table not found', () => {

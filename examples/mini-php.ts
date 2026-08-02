@@ -1,12 +1,8 @@
 import { packrat, isNode, type Ok, type Node } from '../packrat'
 
-// ─── AST Node Helpers ────────────────────────────────────────────────
-
 const tag = (node: Ok): string => (node as Node).tag
 const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T
 const isArr = (node: Ok): node is Ok[] => Array.isArray(node)
-
-// ─── PHP Grammar (PEG) ───────────────────────────────────────────────
 
 const parse = packrat`
   Program = PhpProgram / EchoProgram
@@ -68,8 +64,6 @@ const parse = packrat`
   MultiLineComment = "/*" (~"*/")* "*/"
 `
 
-// ─── Values & Environment ────────────────────────────────────────────
-
 type Value = number | string | boolean | null | Value[] | FunctionValue
 
 type FunctionValue = {
@@ -118,8 +112,6 @@ class Env {
 
   define (name: string, value: Value) { this.vars.set(name, value) }
 }
-
-// ─── Value Coercion (PHP semantics) ──────────────────────────────────
 
 const isNumeric = (v: Value): boolean => {
   if (typeof v === 'number' || typeof v === 'boolean' || v === null) return true
@@ -236,8 +228,6 @@ const collectString = (node: Ok): string => {
   return s
 }
 
-// ─── Evaluator ──────────────────────────────────────────────────────
-
 const extractArgs = (argsNode: Ok | null, env: Env, output: Output): Value[] => {
   if (argsNode === null || argsNode === undefined) return []
   const raw = field<Ok>(argsNode, 'args')
@@ -247,34 +237,24 @@ const extractArgs = (argsNode: Ok | null, env: Env, output: Output): Value[] => 
 
 function evalExpr (node: Ok, env: Env, output: Output): Value {
   if (typeof node === 'string' || node === null || isArr(node)) return node as Value
-
   const t = tag(node)
-
   switch (t) {
     case 'Int':
       return parseInt(field<string>(node, 'value'))
-
     case 'Float':
       return parseFloat(field<string>(node, 'value'))
-
     case 'String':
       return interpolate(processDoubleEscapes(collectString(node)), env)
-
     case 'SqString':
       return processSingleEscapes(collectString(node))
-
     case 'True':
       return true
-
     case 'False':
       return false
-
     case 'Null':
       return null
-
     case 'Var':
       return env.get(field<string>(node, 'name'))
-
     case 'ArrayLit': {
       const elements = field<Ok | null>(node, 'elements')
       if (elements === null) return []
@@ -282,7 +262,6 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
       if (isArr(raw)) return raw.map(e => evalExpr(e, env, output))
       return [evalExpr(raw, env, output)]
     }
-
     case 'IndexExpr': {
       const value = evalExpr(field<Ok>(node, 'expression'), env, output)
       const index = toNumber(evalExpr(field<Ok>(node, 'index'), env, output))
@@ -297,7 +276,6 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
       }
       throw new RuntimeError('cannot index non-array value')
     }
-
     case 'PostfixExpr': {
       const expr = field<Ok>(node, 'expression')
       if (tag(expr) !== 'Var') throw new RuntimeError('++/-- requires a variable')
@@ -308,7 +286,6 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
       env.set(name, next)
       return current
     }
-
     case 'UnaryExpr': {
       const op = field<string>(node, 'op')
       const expr = field<Ok>(node, 'expression')
@@ -327,7 +304,6 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
         default: throw new RuntimeError(`unknown unary operator: ${op}`)
       }
     }
-
     case 'OrExpr': case 'AndExpr': case 'Comparison': case 'Concat': case 'Additive': case 'Multiplicative': {
       let result = evalExpr(field<Ok>(node, 'first'), env, output)
       const rest = (field<Ok | null>(node, 'rest') ?? []) as Ok[]
@@ -336,11 +312,9 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
       }
       return result
     }
-
     case 'CallExpr': {
       const name = field<string>(node, 'name')
       const args = extractArgs(field<Ok | null>(node, 'args'), env, output)
-
       switch (name) {
         case 'strlen': {
           if (args.length !== 1) throw new RuntimeError('strlen: expected 1 argument')
@@ -370,16 +344,13 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
           return s.repeat(n)
         }
       }
-
       const fn = env.get(name)
       if (fn && typeof fn === 'object' && !Array.isArray(fn) && (fn as FunctionValue).tag === 'function') {
         return callFunction(fn as unknown as FunctionValue, args, output)
       }
-
       throw new RuntimeError(`undefined function: ${name}`)
     }
   }
-
   return node as unknown as Value
 }
 
@@ -407,9 +378,7 @@ function execBlock (body: Ok, env: Env, output: Output): void {
 
 function execStmt (node: Ok, env: Env, output: Output): void {
   if (typeof node === 'string' || node === null || isArr(node)) return
-
   const t = tag(node)
-
   switch (t) {
     case 'Echo': {
       const argsNode = field<Ok | null>(node, 'args')
@@ -493,8 +462,6 @@ function execStmt (node: Ok, env: Env, output: Output): void {
   }
 }
 
-// ─── Template → PHP (phase 1) ────────────────────────────────────────
-
 const quote = (text: string): string =>
   text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$')
 
@@ -534,8 +501,6 @@ const templateToPhp = (source: string): string => {
   }
   return `<?php ${out}`
 }
-
-// ─── Public API ──────────────────────────────────────────────────────
 
 /**
  * Run a mini-PHP program and return the echoed output string.

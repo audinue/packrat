@@ -1,12 +1,8 @@
 import { packrat, isNode, type Ok, type Node } from '../packrat'
 
-// ─── AST Node Helpers ────────────────────────────────────────────────
-
 const tag = (node: Ok): string => (node as Node).tag
 const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T
 const isArr = (node: Ok): node is Ok[] => Array.isArray(node)
-
-// ─── Go Grammar (PEG) ───────────────────────────────────────────────
 
 const parse = packrat`
   Program = _ statements:Statement { 0 ; _ } _ -> Program
@@ -58,8 +54,6 @@ const parse = packrat`
   SingleLineComment = "//" ~[\\r\\n]*
   MultiLineComment = "/*" ~"*/"* "*/"
 `
-
-// ─── Interpreter ─────────────────────────────────────────────────────
 
 type Value = number | string | boolean | Value[] | null | FunctionValue
 
@@ -151,23 +145,16 @@ function extractCallArgs (argsNode: Ok | null, env: Env): Value[] {
   return [evalExpr(raw, env)]
 }
 
-// ─── Evaluator ──────────────────────────────────────────────────────
-
 function evalExpr (node: Ok, env: Env): Value {
   if (typeof node === 'string' || node === null || isArr(node)) return node as Value
-
   const t = tag(node)
-
   switch (t) {
     case 'IntLit':
       return parseInt(field<string>(node, 'value'))
-
     case 'FloatLit':
       return parseFloat(field<string>(node, 'value'))
-
     case 'StringLit': {
       const raw = field<Ok>(node, 'value')
-      // GoString uses ^GoChar* extraction -> array of char matches
       let s = ''
       if (typeof raw === 'string') { s = raw }
       else if (isArr(raw)) {
@@ -178,21 +165,17 @@ function evalExpr (node: Ok, env: Env): Value {
       }
       return processEscapes(s)
     }
-
     case 'BoolLit': {
       const v = field<Ok>(node, 'value')
       return v === 'true' || (typeof v === 'boolean' && v)
     }
-
     case 'Ident':
       return env.get(field<string>(node, 'name'))
-
     case 'BinaryExpr': {
       const op = field<Ok>(node, 'op')
       const opStr = typeof op === 'string' ? op : String(op)
       const left = evalExpr(field<Ok>(node, 'left'), env)
       const right = evalExpr(field<Ok>(node, 'right'), env)
-
       switch (opStr) {
         case '+': return toNumber(left) + toNumber(right)
         case '-': return toNumber(left) - toNumber(right)
@@ -216,7 +199,6 @@ function evalExpr (node: Ok, env: Env): Value {
         default: throw new RuntimeError(`unknown operator: ${opStr}`)
       }
     }
-
     case 'UnaryExpr': {
       const op = field<Ok>(node, 'op')
       const opStr = typeof op === 'string' ? op : String(op)
@@ -227,7 +209,6 @@ function evalExpr (node: Ok, env: Env): Value {
         default: throw new RuntimeError(`unknown unary operator: ${opStr}`)
       }
     }
-
     case 'IndexExpr': {
       const arr = evalExpr(field<Ok>(node, 'expr'), env)
       const idx = evalExpr(field<Ok>(node, 'index'), env)
@@ -237,18 +218,13 @@ function evalExpr (node: Ok, env: Env): Value {
         throw new RuntimeError(`index out of range: ${i}`)
       return arr[i]!
     }
-
     case 'CallExpr': {
       const name = field<string>(node, 'name')
       const args = extractCallArgs(field<Ok | null>(node, 'args'), env)
-
-      // Built-in: println
       if (name === 'println') {
         console.log(args.map(valToString).join(' '))
         return null
       }
-
-      // Built-in: len
       if (name === 'len') {
         if (args.length !== 1) throw new RuntimeError('len: expected 1 argument')
         const val = args[0]!
@@ -256,8 +232,6 @@ function evalExpr (node: Ok, env: Env): Value {
         if (typeof val === 'string') return val.length
         throw new RuntimeError('len: argument must be array or string')
       }
-
-      // Built-in: append
       if (name === 'append') {
         if (args.length !== 2) throw new RuntimeError('append: expected 2 arguments')
         const slice = args[0]!
@@ -265,26 +239,20 @@ function evalExpr (node: Ok, env: Env): Value {
         if (!Array.isArray(slice)) throw new RuntimeError('append: first argument must be slice')
         return [...slice, value]
       }
-
-      // User-defined function
       const fn = env.get(name)
       if (fn && typeof fn === 'object' && tag(fn as Ok) === 'function') {
         return callFunction(fn as unknown as FunctionValue, args)
       }
-
       throw new RuntimeError(`undefined function: ${name}`)
     }
-
     case 'SliceLit': {
       const elements = field<Ok | null>(node, 'elements')
       if (elements === null) return []
-      // elements is an ArgList node with 'args' field
       const raw = field<Ok>(elements, 'args')
       if (isArr(raw)) return raw.map(e => evalExpr(e, env))
       return [evalExpr(raw, env)]
     }
   }
-
   return node as unknown as Value
 }
 
@@ -312,9 +280,7 @@ function execBlock (body: Ok, env: Env): void {
 
 function execStmt (node: Ok, env: Env): void {
   if (typeof node === 'string' || node === null || isArr(node)) return
-
   const t = tag(node)
-
   switch (t) {
     case 'VarDecl': {
       env.define(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env))
@@ -394,16 +360,10 @@ function fieldType (typeNode: Ok): string {
   return String(typeNode)
 }
 
-// ─── Public API ──────────────────────────────────────────────────────
-
-/**
- * Run a mini-Go program and return captured stdout lines.
- */
 export function runGo (source: string): string[] {
   const logs: string[] = []
   const originalLog = console.log
   console.log = (...args: unknown[]) => { logs.push(args.map(String).join(' ')) }
-
   try {
     const ast = parse(source.trim() + '\n')
     const globalEnv = new Env()
@@ -413,13 +373,9 @@ export function runGo (source: string): string[] {
   } finally {
     console.log = originalLog
   }
-
   return logs
 }
 
-/**
- * Parse a mini-Go source string and return the AST (for inspection).
- */
 export function parseGo (source: string): Ok {
   return parse(source.trim() + '\n')
 }

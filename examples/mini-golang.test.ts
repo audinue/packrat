@@ -2,14 +2,11 @@ import { expect, test, describe } from 'bun:test'
 import { runGo, parseGo } from './mini-golang'
 
 describe('mini-golang', () => {
-  // ─── Parsing Tests ────────────────────────────────────────────────
 
   test('parseGo returns AST', () => {
     const ast = parseGo('x := 42')
     expect(ast).toBeDefined()
   })
-
-  // ─── Variable Declaration ─────────────────────────────────────────
 
   test('var declaration', () => {
     const logs = runGo(`
@@ -42,8 +39,6 @@ describe('mini-golang', () => {
     `)
     expect(logs).toEqual(['true'])
   })
-
-  // ─── Arithmetic ──────────────────────────────────────────────────
 
   test('addition', () => {
     const logs = runGo(`
@@ -109,8 +104,6 @@ describe('mini-golang', () => {
     expect(logs).toEqual(['-5'])
   })
 
-  // ─── Comparison Operators ─────────────────────────────────────────
-
   test('equality', () => {
     const logs = runGo(`
       println(3 == 3)
@@ -161,8 +154,6 @@ describe('mini-golang', () => {
     expect(logs).toEqual(['true', 'true', 'false'])
   })
 
-  // ─── Logical Operators ────────────────────────────────────────────
-
   test('logical and', () => {
     const logs = runGo(`
       println(true && true)
@@ -186,8 +177,6 @@ describe('mini-golang', () => {
     `)
     expect(logs).toEqual(['false', 'true'])
   })
-
-  // ─── If/Else ──────────────────────────────────────────────────────
 
   test('if true', () => {
     const logs = runGo(`
@@ -229,8 +218,6 @@ describe('mini-golang', () => {
     expect(logs).toEqual(['small'])
   })
 
-  // ─── For Loop ─────────────────────────────────────────────────────
-
   test('for loop with condition', () => {
     const logs = runGo(`
       i := 0
@@ -241,8 +228,6 @@ describe('mini-golang', () => {
     `)
     expect(logs).toEqual(['0', '1', '2'])
   })
-
-  // ─── Functions ─────────────────────────────────────────────────────
 
   test('function declaration and call', () => {
     const logs = runGo(`
@@ -303,16 +288,12 @@ describe('mini-golang', () => {
     expect(logs).toEqual(['99', '10'])
   })
 
-  // ─── println ──────────────────────────────────────────────────────
-
   test('println multiple args', () => {
     const logs = runGo(`
       println("a", "b", "c")
     `)
     expect(logs).toEqual(['a b c'])
   })
-
-  // ─── Slices ──────────────────────────────────────────────────────
 
   test('slice creation and indexing', () => {
     const logs = runGo(`
@@ -323,8 +304,6 @@ describe('mini-golang', () => {
     `)
     expect(logs).toEqual(['1', '2', '3'])
   })
-
-  // ─── Expressions as Statements ────────────────────────────────────
 
   test('expression statement (function call)', () => {
     const logs = runGo(`

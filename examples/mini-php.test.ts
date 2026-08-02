@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test'
 import { runPhp, parsePhp } from './mini-php'
 
 describe('mini-php', () => {
-  // ─── Parsing ─────────────────────────────────────────────────────
 
   test('parsePhp returns AST', () => {
     const ast = parsePhp('<?php $x = 1; ?>') as any
@@ -18,8 +17,6 @@ describe('mini-php', () => {
     expect(runPhp('<?php ?>')).toBe('')
     expect(runPhp('<?php')).toBe('')
   })
-
-  // ─── Echo ────────────────────────────────────────────────────────
 
   test('echo angka', () => {
     expect(runPhp('<?php echo 42; ?>')).toBe('42')
@@ -51,8 +48,6 @@ describe('mini-php', () => {
     expect(runPhp('<?php echo null; ?>')).toBe('')
     expect(runPhp('<?php $x = null; echo $x; ?>')).toBe('')
   })
-
-  // ─── Aritmatika ──────────────────────────────────────────────────
 
   test('aritmatika dasar', () => {
     expect(runPhp('<?php echo 1 + 2; ?>')).toBe('3')
@@ -91,8 +86,6 @@ describe('mini-php', () => {
     expect(() => runPhp('<?php echo 1 / 0; ?>')).toThrow()
   })
 
-  // ─── Konkatenasi ─────────────────────────────────────────────────
-
   test('konkatenasi titik', () => {
     expect(runPhp('<?php echo "foo" . "bar"; ?>')).toBe('foobar')
     expect(runPhp('<?php echo "x" . 5; ?>')).toBe('x5')
@@ -103,8 +96,6 @@ describe('mini-php', () => {
   test('konkatenasi dengan spasi', () => {
     expect(runPhp('<?php echo 5 . 5; ?>')).toBe('55')
   })
-
-  // ─── Variabel ────────────────────────────────────────────────────
 
   test('variabel', () => {
     expect(runPhp('<?php $x = 5; echo $x; ?>')).toBe('5')
@@ -123,8 +114,6 @@ describe('mini-php', () => {
     expect(() => runPhp('<?php echo $x; ?>')).toThrow()
   })
 
-  // ─── Interpolasi string ──────────────────────────────────────────
-
   test('interpolasi variabel di double quote', () => {
     expect(runPhp('<?php $nama = "Budi"; echo "Halo $nama!"; ?>')).toBe('Halo Budi!')
     expect(runPhp('<?php $x = 7; echo "nilai $x ok"; ?>')).toBe('nilai 7 ok')
@@ -141,8 +130,6 @@ describe('mini-php', () => {
   test('escape string', () => {
     expect(runPhp('<?php echo "a\\nb\\tc\\""; ?>')).toBe('a\nb\tc"')
   })
-
-  // ─── Perbandingan & Logika ───────────────────────────────────────
 
   test('comparison', () => {
     expect(runPhp('<?php echo 1 < 2; ?>')).toBe('1')
@@ -174,8 +161,6 @@ describe('mini-php', () => {
   test('comparison string', () => {
     expect(runPhp('<?php echo "abc" < "abd"; ?>')).toBe('1')
   })
-
-  // ─── If / Elseif / Else ──────────────────────────────────────────
 
   test('if else', () => {
     const code = `<?php
@@ -276,8 +261,6 @@ echo $x;`
     expect(runPhp(code)).toBe('7')
   })
 
-  // ─── While ───────────────────────────────────────────────────────
-
   test('while loop', () => {
     const code = `<?php
 $i = 0;
@@ -299,8 +282,6 @@ while ($i <= 10) {
 echo $total;`
     expect(runPhp(code)).toBe('55')
   })
-
-  // ─── For ─────────────────────────────────────────────────────────
 
   test('for loop dengan postfix increment', () => {
     const code = `<?php
@@ -327,8 +308,6 @@ for (; $i < 2; $i++) {
     expect(runPhp(code)).toBe('01')
   })
 
-  // ─── Postfix & Prefix Increment ──────────────────────────────────
-
   test('postfix increment nilai lama', () => {
     expect(runPhp('<?php $i = 0; echo $i++; echo $i; ?>')).toBe('01')
   })
@@ -337,8 +316,6 @@ for (; $i < 2; $i++) {
     expect(runPhp('<?php $i = 0; echo ++$i; ?>')).toBe('1')
     expect(runPhp('<?php $i = 0; echo --$i; ?>')).toBe('-1')
   })
-
-  // ─── Fungsi ──────────────────────────────────────────────────────
 
   test('fungsi tanpa param', () => {
     const code = `<?php
@@ -409,8 +386,6 @@ echo $x;`
     expect(runPhp(code)).toBe('5')
   })
 
-  // ─── Builtin ─────────────────────────────────────────────────────
-
   test('builtin strlen', () => {
     expect(runPhp('<?php echo strlen("halo"); ?>')).toBe('4')
   })
@@ -437,8 +412,6 @@ echo $x;`
     expect(() => runPhp('<?php nggakAda(1); ?>')).toThrow()
   })
 
-  // ─── Array ───────────────────────────────────────────────────────
-
   test('array literal dan index', () => {
     expect(runPhp('<?php $a = [10, 20, 30]; echo $a[1]; ?>')).toBe('20')
   })
@@ -463,8 +436,6 @@ echo $x;`
     expect(runPhp('<?php echo [1, 2]; ?>')).toBe('Array')
   })
 
-  // ─── Komentar ────────────────────────────────────────────────────
-
   test('komentar single line //', () => {
     expect(runPhp('<?php // komentar\n echo 1; ?>')).toBe('1')
   })
@@ -477,13 +448,9 @@ echo $x;`
     expect(runPhp('<?php /* komentar */ echo 3; ?>')).toBe('3')
   })
 
-  // ─── Statement kosong ────────────────────────────────────────────
-
   test('statement kosong ;', () => {
     expect(runPhp('<?php ; echo 1; ?>')).toBe('1')
   })
-
-  // ─── Echo shorthand <?= ──────────────────────────────────────────
 
   test('echo shorthand <?=', () => {
     expect(runPhp('<?= 1 + 2 ?>')).toBe('3')
@@ -498,8 +465,6 @@ echo $x;`
     expect(runPhp('<?= strtoupper("halo") ?>')).toBe('HALO')
     expect(runPhp('<?= "halo" . " dunia" ?>')).toBe('halo dunia')
   })
-
-  // ─── Template (teks campur PHP) ──────────────────────────────────
 
   test('teks campur echo shorthand', () => {
     expect(runPhp('Hello <?= "John" ?>!')).toBe('Hello John!')
@@ -539,8 +504,6 @@ echo $x;`
     expect(runPhp('Harga $5 dan "kutip"')).toBe('Harga $5 dan "kutip"')
     expect(runPhp('backslash \\ ok')).toBe('backslash \\ ok')
   })
-
-  // ─── Kasus lengkap ───────────────────────────────────────────────
 
   test('fizzbuzz', () => {
     const code = `<?php
