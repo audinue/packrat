@@ -19,6 +19,7 @@ type Expression =
   | { tag: 'One', expression: Expression }
   | { tag: 'Repeat', expression: Expression, min: number, max?: number, separator?: Expression }
   | { tag: 'Reference', name: string }
+  | { tag: 'Indent', expression: Expression }
   | { tag: 'Class', predicates: Predicate[], insensitive?: boolean, negation?: boolean }
   | { tag: 'Literal', value: string, insensitive?: boolean }
   | { tag: 'Any' }
@@ -45,7 +46,7 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
   switch (expression.tag) {
     case 'Choice': case 'Sequence':
       return [expression, ...expression.expressions.flatMap(getExpressionExpressions)]
-    case 'Node': case 'Field': case 'Extract': case 'Text': case 'Except': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One':
+    case 'Node': case 'Field': case 'Extract': case 'Text': case 'Except': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Indent':
       return [expression, ...getExpressionExpressions(expression.expression)]
     case 'Repeat':
       return [expression, ...getExpressionExpressions(expression.expression), ...(expression.separator ? getExpressionExpressions(expression.separator) : [])]
@@ -58,10 +59,11 @@ const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.express
 
 const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
-  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<number, { offset: number, result: Ok | Err }>]))
+  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<number, { offset: number, indent: number[], result: Ok | Err }>]))
   const err = Symbol('err')
   type Err = typeof err
   let offset = 0
+  let indent = [0]
   const getLocation = (offset: number) => {
     let line = 1
     let column = 1
@@ -99,10 +101,11 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
     const entry = cache[name]![key]
     if (entry) {
       offset = entry.offset
+      indent = [...entry.indent]
       return entry.result
     }
     const result = evaluateExpression(rules[name]!)
-    cache[name]![key] = { offset, result }
+    cache[name]![key] = { offset, indent: [...indent], result }
     return result
   }
   const evaluateExpression = (expression: Expression): Ok | Err => {
@@ -279,6 +282,31 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
       case 'Reference': {
         return evaluateRule(expression.name)
       }
+      case 'Indent': {
+        if (offset >= input.length) {
+          return err
+        }
+        const char = input.charAt(offset)
+        if (char !== '\r' && char !== '\n') {
+          return err
+        }
+        offset++
+        if (char === '\r' && offset < input.length && input.charAt(offset) === '\n') {
+          offset++
+        }
+        const saved = offset
+        while (offset < input.length && input.charAt(offset) === ' ') {
+          offset++
+        }
+        const next = offset - saved
+        if (next <= indent[indent.length - 1]!) {
+          return err
+        }
+        indent.push(next)
+        const result = evaluateExpression(expression.expression)
+        indent.pop()
+        return result
+      }
       case 'Class': {
         if (offset >= input.length) {
           return err
@@ -351,28 +379,19 @@ const parseGrammar = (value: Ok): Grammar => {
       throw new Error('Invalid value')
     }
     switch (value.tag) {
-      case 'Choice':
-      case 'Sequence': {
+      case 'Choice': case 'Sequence': {
         if (!Array.isArray(value.expressions)) {
           throw new Error('Invalid value')
         }
         return { tag: value.tag, expressions: value.expressions.map(parseExpression) }
       }
-      case 'Node':
-      case 'Field': {
+      case 'Node': case 'Field': {
         if (!isNode(value.expression) || typeof value.name !== 'string') {
           throw new Error('Invalid value')
         }
         return { tag: value.tag, name: value.name, expression: parseExpression(value.expression) }
       }
-      case 'Extract':
-      case 'Text':
-      case 'Except':
-      case 'And':
-      case 'Not':
-      case 'Optional':
-      case 'Zero':
-      case 'One': {
+      case 'Extract': case 'Text': case 'Except': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Indent': {
         if (!isNode(value.expression)) {
           throw new Error('Invalid value')
         }
@@ -956,11 +975,34 @@ const packratGrammar: Grammar = {
         tag: 'Choice',
         expressions: [
           { tag: 'Reference', name: 'Reference' },
+          { tag: 'Reference', name: 'Indent' },
           { tag: 'Reference', name: 'Class' },
           { tag: 'Reference', name: 'Literal' },
           { tag: 'Reference', name: 'Any' },
           { tag: 'Reference', name: 'Group' },
         ]
+      }
+    },
+    // Indent = ">>" _ expression:Expression _ "<<" -> Indent
+    {
+      name: 'Indent',
+      expression: {
+        tag: 'Node',
+        name: 'Indent',
+        expression: {
+          tag: 'Sequence',
+          expressions: [
+            { tag: 'Literal', value: '>>' },
+            { tag: 'Reference', name: '_' },
+            {
+              tag: 'Field',
+              name: 'expression',
+              expression: { tag: 'Reference', name: 'Expression' }
+            },
+            { tag: 'Reference', name: '_' },
+            { tag: 'Literal', value: '<<' },
+          ]
+        }
       }
     },
     // Group = "(" _ ^Expression _ ")"

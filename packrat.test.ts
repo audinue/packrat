@@ -220,6 +220,31 @@ describe('packrat', () => {
     expect(() => parse('aa')).toThrow()
   })
 
+  test('Indent', () => {
+    const parse = packrat`
+      Indent = >> "a" << -> Indent
+    `
+    expect((parse('\n  a') as any).tag).toBe('Indent')
+    expect(() => parse('a')).toThrow()
+    expect(() => parse('\na')).toThrow()
+  })
+
+  test('Indent nested deeper', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    const result = parse('a\n  b') as any
+    expect(result.tag).toBe('Outer')
+    expect(result.inner).toBe('b')
+  })
+
+  test('Indent nested same or lower fails', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    expect(() => parse('a\nb')).toThrow()
+  })
+
   test('Self host', () => {
     const input = `
       Grammar = _ rules:( ^Rule _ )+ -> Grammar
@@ -244,7 +269,8 @@ describe('packrat', () => {
       RepeatMax =  _ "," _ ^Number
       RepeatSeparator =  _ ";" _ ^Expression
       Number = "0" / $( [1-9] [0-9]* )
-      Primary = Reference / Class / Literal / Any / Group
+      Primary = Reference / Indent / Class / Literal / Any / Group
+      Indent = ">>" _ expression:Expression _ "<<" -> Indent
       Group = "(" _ ^Expression _ ")"
       Reference = name:Id !( _ "=" ) -> Reference
       Id = $( [a-z_]i [a-z0-9_]i* )

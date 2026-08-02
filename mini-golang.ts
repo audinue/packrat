@@ -13,7 +13,6 @@ const isArr = (node: Ok): node is Ok[] => Array.isArray(node)
 const parse = packrat`
   Program = _ statements:Statement { 0 ; _ } _ -> Program
   Statement = VarDecl / ShortVarDecl / AssignStmt / IfStmt / ForStmt / FuncDecl / ReturnStmt / ExprStmt
-
   VarDecl = "var" __ name:Id _ type:Type _ "=" _ value:Expr -> VarDecl
   ShortVarDecl = name:Id _ ":=" _ value:Expr -> ShortVarDecl
   AssignStmt = name:Id _ "=" _ value:Expr -> AssignStmt
@@ -23,11 +22,9 @@ const parse = packrat`
   FuncDecl = "func" __ name:Id _ "(" _ params:ParamList? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> FuncDecl
   ReturnStmt = "return" _ value:Expr? -> ReturnStmt
   ExprStmt = expr:Expr -> ExprStmt
-
   ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
   Param = name:Id _ ":" _ type:Type -> Param
   Type = "int" / "float64" / "string" / "bool" / "[]" _ type:Type -> SliceType
-
   Expr = OrExpr
   OrExpr = left:AndExpr _ op:"||" _ right:OrExpr -> BinaryExpr / AndExpr
   AndExpr = left:EqExpr _ op:"&&" _ right:AndExpr -> BinaryExpr / EqExpr
@@ -38,7 +35,6 @@ const parse = packrat`
   UnaryExpr = op:UnaryOp _ expr:UnaryExpr -> UnaryExpr / PostfixExpr
   UnaryOp = "!" / "-"
   PostfixExpr = expr:Primary _ "[" _ index:Expr _ "]" -> IndexExpr / Primary
-
   Primary = IntLit / FloatLit / StringLit / BoolLit / SliceLit / CallExpr / GroupExpr / Ident
   IntLit = value:Number -> IntLit
   FloatLit = value:$( Number "." Number ) -> FloatLit
@@ -51,15 +47,12 @@ const parse = packrat`
   GroupExpr = "(" _ ^Expr _ ")"
   Ident = name:Id -> Ident
   ArgList = args:Expr { 2 ; _ "," _ } -> ArgList / args:Expr -> ArgList
-
   EqOp = "==" / "!="
   RelOp = "<=" / ">=" / "<" / ">"
   AddOp = "+" / "-"
   MulOp = "*" / "/" / "%"
-
   Number = "0" / $( [1-9] [0-9]* )
   Id = $( [a-z_]i [a-z0-9_]i* )
-
   _ = Space*
   __ = Space+
   Space = WhiteSpace / SingleLineComment / MultiLineComment
