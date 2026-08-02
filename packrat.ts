@@ -496,7 +496,6 @@ const parseGrammar = (value: Ok): Grammar => {
 
 const packratGrammar: Grammar = {
   rules: [
-    // Grammar = _ rules:( ^Rule _ )+ -> Grammar
     {
       name: 'Grammar',
       expression: {
@@ -527,7 +526,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Rule = name:Id _ "=" _ expression:Expression -> Rule
     {
       name: 'Rule',
       expression: {
@@ -553,12 +551,10 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Expression = Choice
     {
       name: 'Expression',
       expression: { tag: 'Reference', name: 'Choice' }
     },
-    // Choice = expressions:Node { 2 ; _ "/" _ } -> Choice / Node
     {
       name: 'Choice',
       expression: {
@@ -589,7 +585,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Node = expression:Sequence _ "->" _ name:Id -> Node / Sequence
     {
       name: 'Node',
       expression: {
@@ -621,7 +616,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Sequence = expressions:Select { 2 ; __ } -> Sequence / Select
     {
       name: 'Sequence',
       expression: {
@@ -645,7 +639,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Select = Field / Extract / Prefix
     {
       name: 'Select',
       expression: {
@@ -657,7 +650,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Field = name:Id _ ":" _ expression:Prefix -> Field
     {
       name: 'Field',
       expression: {
@@ -683,7 +675,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Extract = "^" _ expression:Prefix -> Extract
     {
       name: 'Extract',
       expression: {
@@ -703,7 +694,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Prefix = Text / And / Not / Postfix
     {
       name: 'Prefix',
       expression: {
@@ -716,7 +706,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Text = "$" _ expression:Postfix -> Text
     {
       name: 'Text',
       expression: {
@@ -736,7 +725,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // And = "&" _ expression:Postfix -> And
     {
       name: 'And',
       expression: {
@@ -756,7 +744,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Not = "!" _ expression:Postfix -> Not
     {
       name: 'Not',
       expression: {
@@ -776,7 +763,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Postfix = Optional / Zero / One / Repeat / Primary
     {
       name: 'Postfix',
       expression: {
@@ -790,7 +776,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Optional = expression:Primary _ "?" -> Optional
     {
       name: 'Optional',
       expression: {
@@ -810,7 +795,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Zero = expression:Primary _ "*" -> Zero
     {
       name: 'Zero',
       expression: {
@@ -830,7 +814,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // One = expression:Primary _ "+" -> One
     {
       name: 'One',
       expression: {
@@ -850,7 +833,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Repeat = expression:Primary _ "{" _ min:Number max:RepeatMax? separator:RepeatSeparator? _ "}" -> Repeat
     {
       name: 'Repeat',
       expression: {
@@ -894,7 +876,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // RepeatMax =  _ "," _ ^Number
     {
       name: 'RepeatMax',
       expression: {
@@ -910,7 +891,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // RepeatSeparator =  _ ";" _ ^Expression
     {
       name: 'RepeatSeparator',
       expression: {
@@ -926,7 +906,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Number = "0" / $( [1-9] [0-9]* )
     {
       name: 'Number',
       expression: {
@@ -959,7 +938,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Primary = Reference / Class / Literal / Any / Group
     {
       name: 'Primary',
       expression: {
@@ -975,7 +953,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Except = "~" _ expression:Primary -> Except
     {
       name: 'Except',
       expression: {
@@ -995,7 +972,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Indent = ">>" _ expression:Expression _ "<<" -> Indent
     {
       name: 'Indent',
       expression: {
@@ -1017,7 +993,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Group = "(" _ ^Expression _ ")"
     {
       name: 'Group',
       expression: {
@@ -1034,7 +1009,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Reference = name:Id !( _ "=" ) -> Reference
     {
       name: 'Reference',
       expression: {
@@ -1062,7 +1036,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Id = $( [a-z_]i [a-z0-9_]i* )
     {
       name: 'Id',
       expression: {
@@ -1094,7 +1067,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Class = "[" negation:"^"? predicates:ClassItem* "]" insensitive:"i"? -> Class
     {
       name: 'Class',
       expression: {
@@ -1133,7 +1105,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // ClassItem = Between / Equal
     {
       name: 'ClassItem',
       expression: {
@@ -1144,7 +1115,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Between = min:PredicateItem "-" max:PredicateItem -> Between
     {
       name: 'Between',
       expression: {
@@ -1168,7 +1138,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Equal = value:PredicateItem -> Equal
     {
       name: 'Equal',
       expression: {
@@ -1181,7 +1150,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // PredicateItem = $( "\\" . ) / ~"]"
     {
       name: 'PredicateItem',
       expression: {
@@ -1204,7 +1172,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Literal = value:String insensitive:"i"? -> Literal
     {
       name: 'Literal',
       expression: {
@@ -1230,7 +1197,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // String = $( "\"" ^$StringItem* "\"" )
     {
       name: 'String',
       expression: {
@@ -1254,7 +1220,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // StringItem = "\\" . / ~"\""
     {
       name: 'StringItem',
       expression: {
@@ -1274,7 +1239,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // Any = "." -> Any
     {
       name: 'Any',
       expression: {
@@ -1283,7 +1247,6 @@ const packratGrammar: Grammar = {
         expression: { tag: 'Literal', value: '.' }
       }
     },
-    // _ = Space*
     {
       name: '_',
       expression: {
@@ -1291,7 +1254,6 @@ const packratGrammar: Grammar = {
         expression: { tag: 'Reference', name: 'Space' }
       }
     },
-    // __ = Space+
     {
       name: '__',
       expression: {
@@ -1299,7 +1261,6 @@ const packratGrammar: Grammar = {
         expression: { tag: 'Reference', name: 'Space' }
       }
     },
-    // Space = WhiteSpace / SingleLineComment / MultiLineComment
     {
       name: 'Space',
       expression: {
@@ -1311,7 +1272,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // WhiteSpace = [ \t\r\n]+
     {
       name: 'WhiteSpace',
       expression: {
@@ -1327,7 +1287,6 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // SingleLineComment = "//" ~[\r\n]*
     {
       name: 'SingleLineComment',
       expression: {
@@ -1350,7 +1309,6 @@ const packratGrammar: Grammar = {
         ]
       }
     },
-    // MultiLineComment = "/*" ~"*/"* "*/"
     {
       name: 'MultiLineComment',
       expression: {
