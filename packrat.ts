@@ -509,19 +509,13 @@ const packratGrammar: Grammar = {
               tag: 'Field',
               name: 'rules',
               expression: {
-                tag: 'One',
-                expression: {
-                  tag: 'Sequence',
-                  expressions: [
-                    {
-                      tag: 'Extract',
-                      expression: { tag: 'Reference', name: 'Rule' }
-                    },
-                    { tag: 'Reference', name: '_' },
-                  ]
-                }
+                tag: 'Repeat',
+                min: 1,
+                expression: { tag: 'Reference', name: 'Rule' },
+                separator: { tag: 'Reference', name: '_' }
               }
             },
+            { tag: 'Reference', name: '_' },
           ]
         }
       }

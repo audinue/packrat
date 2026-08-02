@@ -245,7 +245,7 @@ describe('packrat', () => {
 
   test('Self host', () => {
     const input = `
-      Grammar = _ rules:( ^Rule _ )+ -> Grammar
+      Grammar = _ rules:Rule { 1 ; _ } _ -> Grammar
       Rule = name:Id _ "=" _ expression:Expression -> Rule
       Expression = Choice
       Choice = expressions:Node { 2 ; _ "/" _ } -> Choice / Node
