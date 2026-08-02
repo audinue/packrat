@@ -9,7 +9,6 @@ type Expression =
   | { tag: 'Field', expression: Expression, name: string }
   | { tag: 'Extract', expression: Expression }
   | { tag: 'Text', expression: Expression }
-  | { tag: 'Except', expression: Expression }
   | { tag: 'And', expression: Expression }
   | { tag: 'Not', expression: Expression }
   | { tag: 'Optional', expression: Expression }
@@ -17,6 +16,7 @@ type Expression =
   | { tag: 'One', expression: Expression }
   | { tag: 'Repeat', expression: Expression, min: number, max?: number, separator?: Expression }
   | { tag: 'Reference', name: string }
+  | { tag: 'Except', expression: Expression }
   | { tag: 'Indent', expression: Expression }
   | { tag: 'Class', predicates: Predicate[], insensitive?: boolean, negation?: boolean }
   | { tag: 'Literal', value: string, insensitive?: boolean }
@@ -44,7 +44,7 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
   switch (expression.tag) {
     case 'Choice': case 'Sequence':
       return [expression, ...expression.expressions.flatMap(getExpressionExpressions)]
-    case 'Node': case 'Field': case 'Extract': case 'Text': case 'Except': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Indent':
+    case 'Node': case 'Field': case 'Extract': case 'Text': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Except': case 'Indent':
       return [expression, ...getExpressionExpressions(expression.expression)]
     case 'Repeat':
       return [expression, ...getExpressionExpressions(expression.expression), ...(expression.separator ? getExpressionExpressions(expression.separator) : [])]
@@ -182,17 +182,6 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
         }
         return input.substring(saved, offset)
       }
-      case 'Except': {
-        const saved = offset
-        const result = evaluateExpression(expression.expression)
-        offset = saved
-        if (result === err) {
-          if (offset < input.length) {
-            return input.charAt(offset++)
-          }
-        }
-        return err
-      }
       case 'And': {
         const saved = offset
         const result = evaluateExpression(expression.expression)
@@ -279,6 +268,17 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
       }
       case 'Reference': {
         return evaluateRule(expression.name)
+      }
+      case 'Except': {
+        const saved = offset
+        const result = evaluateExpression(expression.expression)
+        offset = saved
+        if (result === err) {
+          if (offset < input.length) {
+            return input.charAt(offset++)
+          }
+        }
+        return err
       }
       case 'Indent': {
         if (offset >= input.length) {
@@ -403,7 +403,7 @@ const parseGrammar = (value: Ok): Grammar => {
         }
         return { tag: value.tag, name: value.name, expression: parseExpression(value.expression) }
       }
-      case 'Extract': case 'Text': case 'Except': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Indent': {
+      case 'Extract': case 'Text': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Except': case 'Indent': {
         if (!isNode(value.expression)) {
           throw new Error('Invalid value')
         }
@@ -703,38 +703,17 @@ const packratGrammar: Grammar = {
         }
       }
     },
-    // Prefix = Except / Text / And / Not / Postfix
+    // Prefix = Text / And / Not / Postfix
     {
       name: 'Prefix',
       expression: {
         tag: 'Choice',
         expressions: [
-          { tag: 'Reference', name: 'Except' },
           { tag: 'Reference', name: 'Text' },
           { tag: 'Reference', name: 'And' },
           { tag: 'Reference', name: 'Not' },
           { tag: 'Reference', name: 'Postfix' },
         ]
-      }
-    },
-    // Except = "~" _ expression:Postfix -> Except
-    {
-      name: 'Except',
-      expression: {
-        tag: 'Node',
-        name: 'Except',
-        expression: {
-          tag: 'Sequence',
-          expressions: [
-            { tag: 'Literal', value: '~' },
-            { tag: 'Reference', name: '_' },
-            {
-              tag: 'Field',
-              name: 'expression',
-              expression: { tag: 'Reference', name: 'Postfix' }
-            }
-          ]
-        }
       }
     },
     // Text = "$" _ expression:Postfix -> Text
@@ -987,12 +966,33 @@ const packratGrammar: Grammar = {
         tag: 'Choice',
         expressions: [
           { tag: 'Reference', name: 'Reference' },
+          { tag: 'Reference', name: 'Except' },
           { tag: 'Reference', name: 'Indent' },
           { tag: 'Reference', name: 'Class' },
           { tag: 'Reference', name: 'Literal' },
           { tag: 'Reference', name: 'Any' },
           { tag: 'Reference', name: 'Group' },
         ]
+      }
+    },
+    // Except = "~" _ expression:Primary -> Except
+    {
+      name: 'Except',
+      expression: {
+        tag: 'Node',
+        name: 'Except',
+        expression: {
+          tag: 'Sequence',
+          expressions: [
+            { tag: 'Literal', value: '~' },
+            { tag: 'Reference', name: '_' },
+            {
+              tag: 'Field',
+              name: 'expression',
+              expression: { tag: 'Reference', name: 'Primary' }
+            }
+          ]
+        }
       }
     },
     // Indent = ">>" _ expression:Expression _ "<<" -> Indent
@@ -1335,9 +1335,9 @@ const packratGrammar: Grammar = {
         expressions: [
           { tag: 'Literal', value: '//' },
           {
-            tag: 'Except',
+            tag: 'Zero',
             expression: {
-              tag: 'Zero',
+              tag: 'Except',
               expression: {
                 tag: 'Class',
                 predicates: [
@@ -1358,9 +1358,9 @@ const packratGrammar: Grammar = {
         expressions: [
           { tag: 'Literal', value: '/*' },
           {
-            tag: 'Except',
+            tag: 'Zero',
             expression: {
-              tag: 'Zero',
+              tag: 'Except',
               expression: { tag: 'Literal', value: '*/' }
             },
           },

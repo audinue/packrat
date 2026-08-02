@@ -24,8 +24,8 @@ const parseSql = packrat`
   __ = Space+
   Space = WhiteSpace / SingleLineComment / MultiLineComment
   WhiteSpace = [ \\t\\r\\n]+
-  SingleLineComment = "--" ( ~[\\r\\n] )*
-  MultiLineComment = "/*" ( ~"*/" )* "*/"
+  SingleLineComment = "--" ~[\\r\\n]*
+  MultiLineComment = "/*" ~"*/"* "*/"
 `
 
 type Db = Record<string, Record<string, any>[]>

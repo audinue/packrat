@@ -59,9 +59,9 @@ const parse = packrat`
   __ = Space+
   Space = WhiteSpace / SingleLineComment / HashComment / MultiLineComment
   WhiteSpace = [ \\t\\r\\n]+
-  SingleLineComment = "//" (~[\\r\\n])*
-  HashComment = "#" (~[\\r\\n])*
-  MultiLineComment = "/*" (~"*/")* "*/"
+  SingleLineComment = "//" ~[\\r\\n]*
+  HashComment = "#" ~[\\r\\n]*
+  MultiLineComment = "/*" ~"*/"* "*/"
 `
 
 type Value = number | string | boolean | null | Value[] | FunctionValue
