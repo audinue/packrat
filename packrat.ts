@@ -59,7 +59,7 @@ const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.express
 
 const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
-  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<number, { offset: number, indent: number[], result: Ok | Err }>]))
+  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], result: Ok | Err }>]))
   const err = Symbol('err')
   type Err = typeof err
   let offset = 0
@@ -97,7 +97,7 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
     }
   }
   const evaluateRule = (name: string): Ok | Err => {
-    const key = offset
+    const key = `${offset}@${indent}`
     const entry = cache[name]![key]
     if (entry) {
       offset = entry.offset

@@ -10,8 +10,8 @@ const parsePy = packrat`
   Print = "print" _ "(" _ argument:Expression? _ ")" -> Print
 
   If = "if" __ expression:Expression _ ":" _ block:Block elifs:Elif* else:Else? -> If
-  Elif = [\\r\\n]+ _ "elif" __ expression:Expression _ ":" _ block:Block -> Elif
-  Else = [\\r\\n]+ _ "else" _ ":" _ block:Block -> Else
+  Elif = Newlines _ "elif" __ expression:Expression _ ":" _ block:Block -> Elif
+  Else = Newlines _ "else" _ ":" _ block:Block -> Else
 
   While = "while" __ expression:Expression _ ":" _ block:Block -> While
 
