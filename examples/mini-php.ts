@@ -493,13 +493,55 @@ function execStmt (node: Ok, env: Env, output: Output): void {
   }
 }
 
+// ─── Template → PHP (phase 1) ────────────────────────────────────────
+
+const quote = (text: string): string =>
+  text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$')
+
+/**
+ * Rewrite a PHP template (`foo<?php bar ?>baz`) into plain PHP
+ * (`<?php echo "foo"; bar; echo "baz"; ?>`) by wrapping literal text
+ * in echo and stripping the original tags.
+ */
+const templateToPhp = (source: string): string => {
+  let out = ''
+  let i = 0
+  while (i < source.length) {
+    const open = source.indexOf('<?', i)
+    if (open === -1) {
+      out += `echo "${quote(source.slice(i))}"; `
+      break
+    }
+    if (open > i) out += `echo "${quote(source.slice(i, open))}"; `
+    if (source.startsWith('<?=', open)) {
+      const close = source.indexOf('?>', open + 3)
+      if (close === -1) throw new Error('unterminated <?= tag')
+      out += `echo ${source.slice(open + 3, close).trim()}; `
+      i = close + 2
+    } else if (source.startsWith('<?php', open)) {
+      const close = source.indexOf('?>', open + 5)
+      if (close === -1) {
+        out += source.slice(open + 5)
+        i = source.length
+      } else {
+        out += source.slice(open + 5, close)
+        i = close + 2
+      }
+    } else {
+      out += 'echo "<?"; '
+      i = open + 2
+    }
+  }
+  return `<?php ${out}`
+}
+
 // ─── Public API ──────────────────────────────────────────────────────
 
 /**
  * Run a mini-PHP program and return the echoed output string.
  */
 export function runPhp (source: string): string {
-  const ast = parse(source.trim() + '\n')
+  const ast = parse(templateToPhp(source))
   const output: Output = { text: '' }
   const globalEnv = new Env()
   try {
@@ -514,5 +556,5 @@ export function runPhp (source: string): string {
  * Parse a mini-PHP source string and return the AST (for inspection).
  */
 export function parsePhp (source: string): Ok {
-  return parse(source.trim() + '\n')
+  return parse(templateToPhp(source))
 }

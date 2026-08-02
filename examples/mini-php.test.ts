@@ -10,8 +10,8 @@ describe('mini-php', () => {
     expect(ast.statements.length).toBe(1)
   })
 
-  test('tanpa tag <?php error', () => {
-    expect(() => runPhp('echo 1;')).toThrow()
+  test('tanpa tag <?php jadi teks biasa', () => {
+    expect(runPhp('echo 1;')).toBe('echo 1;')
   })
 
   test('program kosong', () => {
@@ -497,6 +497,47 @@ echo $x;`
   test('echo shorthand dengan fungsi', () => {
     expect(runPhp('<?= strtoupper("halo") ?>')).toBe('HALO')
     expect(runPhp('<?= "halo" . " dunia" ?>')).toBe('halo dunia')
+  })
+
+  // ─── Template (teks campur PHP) ──────────────────────────────────
+
+  test('teks campur echo shorthand', () => {
+    expect(runPhp('Hello <?= "John" ?>!')).toBe('Hello John!')
+  })
+
+  test('teks campur blok php', () => {
+    expect(runPhp('Selamat datang <?php $nama = "budi"; echo $nama; ?>!')).toBe('Selamat datang budi!')
+  })
+
+  test('teks di antara multiple tag', () => {
+    expect(runPhp('a<?= 1 ?>b<?= 2 ?>c')).toBe('a1b2c')
+  })
+
+  test('teks campur if dan loop', () => {
+    expect(runPhp('<?php $n = 3; if ($n > 2) { echo "besar"; } ?> !!')).toBe('besar !!')
+    expect(runPhp('Mulai: <?php for ($i = 0; $i < 3; $i++) { echo $i . " "; } ?>Selesai')).toBe('Mulai: 0 1 2 Selesai')
+  })
+
+  test('newline di teks dipertahankan', () => {
+    expect(runPhp('A\n<?= 1 ?>\nB')).toBe('A\n1\nB')
+  })
+
+  test('teks doang (tanpa tag) jadi passthrough', () => {
+    expect(runPhp('Halo dunia!')).toBe('Halo dunia!')
+  })
+
+  test('teks dengan < bukan tag php', () => {
+    expect(runPhp('a < b')).toBe('a < b')
+    expect(runPhp('a < b <?= 1 ?>')).toBe('a < b 1')
+  })
+
+  test('tag <? tanpa identitas jadi teks', () => {
+    expect(runPhp('Hello <? x')).toBe('Hello <? x')
+  })
+
+  test('teks dengan karakter khusus', () => {
+    expect(runPhp('Harga $5 dan "kutip"')).toBe('Harga $5 dan "kutip"')
+    expect(runPhp('backslash \\ ok')).toBe('backslash \\ ok')
   })
 
   // ─── Kasus lengkap ───────────────────────────────────────────────
