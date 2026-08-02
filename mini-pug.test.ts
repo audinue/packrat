@@ -128,8 +128,12 @@ footer Note`
     expect(() => pug('div\n\tp Tabbed')).toThrow()
   })
 
-  test('blank line di tengah tidak didukung', () => {
-    expect(() => pug('div\n\n  p After blank')).toThrow()
+  test('blank line di tengah', () => {
+    const input = `div
+
+  p After blank`
+    const result = pug(input)
+    expect(result).toBe('<div><p>After blank</p></div>')
   })
 
   test('empty input tidak didukung', () => {

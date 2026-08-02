@@ -294,6 +294,20 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
         if (char === '\r' && offset < input.length && input.charAt(offset) === '\n') {
           offset++
         }
+        while (offset < input.length) {
+          let scan = offset
+          while (scan < input.length && input.charAt(scan) === ' ') {
+            scan++
+          }
+          if (scan < input.length && (input.charAt(scan) === '\n' || input.charAt(scan) === '\r')) {
+            offset = scan + 1
+            if (input.charAt(scan) === '\r' && offset < input.length && input.charAt(offset) === '\n') {
+              offset++
+            }
+            continue
+          }
+          break
+        }
         const saved = offset
         while (offset < input.length && input.charAt(offset) === ' ') {
           offset++
