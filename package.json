@@ -1,5 +1,5 @@
 {
-  "name": "packrat3",
+  "name": "packrat",
   "module": "index.ts",
   "type": "module",
   "private": true,
