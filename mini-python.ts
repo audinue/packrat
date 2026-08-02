@@ -1,47 +1,31 @@
 import { isNode, packrat } from './packrat'
 
 const parsePy = packrat`
-  Program = Newlines* first:Statement rest:(Newlines ^Statement)* Newlines* _ -> Program
-
+  Program = Newlines* statements:(^Statement Newlines*)+ Newlines* _ -> Program
   Statement = Assignment / Print / If / While
-
   Assignment = name:Id _ "=" _ expression:Expression -> Assign
-
   Print = "print" _ "(" _ argument:Expression? _ ")" -> Print
-
   If = "if" __ expression:Expression _ ":" _ block:Block elifs:Elif* else:Else? -> If
   Elif = Newlines _ "elif" __ expression:Expression _ ":" _ block:Block -> Elif
   Else = Newlines _ "else" _ ":" _ block:Block -> Else
-
   While = "while" __ expression:Expression _ ":" _ block:Block -> While
-
-  Block = first:(>> Statement <<) rest:(>> Statement <<)* -> Block
-
+  Block = statements:>> Statement <<+ -> Block
   Expression = Comparison
-
   Comparison = first:Additive rest:(_ op:CompareOp _ term:Additive -> Binary)* -> Comparison
   Additive = first:Multiplicative rest:(_ op:AdditiveOp _ term:Multiplicative -> Binary)* -> Additive
   Multiplicative = first:Unary rest:(_ op:MultOp _ term:Unary -> Binary)* -> Multiplicative
-
   Unary = "-" _ expression:Unary -> Negate / Primary
-
   Primary = Number / String / True / False / Id / "(" _ ^Expression _ ")"
-
   CompareOp = "==" / "!=" / "<=" / ">=" / "<" / ">"
   AdditiveOp = "+" / "-"
   MultOp = "*" / "/" / "%"
-
   Number = value:NumberText -> Number
   NumberText = "0" / $( [1-9] [0-9]* )
-
   String = value:("\\\"" ^$(NotQuote*) "\\\"") -> String
   NotQuote = ~"\\\""
-
   Id = value:$([a-z_] [a-z0-9_]*) -> Id
-
   True = "True" -> True
   False = "False" -> False
-
   Newlines = [\\r\\n]+
   _ = Space*
   __ = Space+
@@ -84,29 +68,22 @@ const evalBinary = (op: string, left: unknown, right: unknown): unknown => {
 
 const evalExpr = (node: unknown, scope: Scope): unknown => {
   if (!isNode(node)) throw new Error('Invalid expression')
-
   switch (node.tag) {
     case 'Number':
       return parseInt(node.value as string, 10)
-
     case 'String':
       return node.value
-
     case 'True':
       return true
-
     case 'False':
       return false
-
     case 'Id': {
       const name = node.value as string
       if (!scope.has(name)) throw new Error(`NameError: ${name} is not defined`)
       return scope.get(name)
     }
-
     case 'Negate':
       return -(evalExpr(node.expression, scope) as number)
-
     case 'Comparison': case 'Additive': case 'Multiplicative': {
       let result = evalExpr(node.first, scope)
       for (const binary of ((node.rest as unknown[] | null) ?? [])) {
@@ -115,15 +92,14 @@ const evalExpr = (node: unknown, scope: Scope): unknown => {
       }
       return result
     }
-
     default:
       throw new Error(`Unknown expression: ${node.tag}`)
   }
 }
 
 const blockStatements = (block: unknown): unknown[] => {
-  const node = block as { first: unknown, rest: unknown[] | null }
-  return [node.first, ...((node.rest ?? []) as unknown[])]
+  const node = block as { statements: unknown[] }
+  return node.statements
 }
 
 const runStatements = (statements: unknown[], scope: Scope, output: string[]): void => {
@@ -138,20 +114,17 @@ const runBlock = (block: unknown, scope: Scope, output: string[]): void => {
 
 const runStatement = (node: unknown, scope: Scope, output: string[]): void => {
   if (!isNode(node)) throw new Error('Invalid statement')
-
   switch (node.tag) {
     case 'Assign': {
       const name = (node.name as unknown as { value: string }).value
       scope.set(name, evalExpr(node.expression, scope))
       break
     }
-
     case 'Print': {
       const argument = node.argument
       output.push(argument === null || argument === undefined ? '' : format(evalExpr(argument, scope)))
       break
     }
-
     case 'If': {
       if (truthy(evalExpr(node.expression, scope))) {
         runBlock(node.block, scope, output)
@@ -170,14 +143,12 @@ const runStatement = (node: unknown, scope: Scope, output: string[]): void => {
       }
       break
     }
-
     case 'While': {
       while (truthy(evalExpr(node.expression, scope))) {
         runBlock(node.block, scope, output)
       }
       break
     }
-
     default:
       throw new Error(`Unknown statement: ${node.tag}`)
   }
@@ -185,8 +156,7 @@ const runStatement = (node: unknown, scope: Scope, output: string[]): void => {
 
 const runProgram = (node: unknown, scope: Scope, output: string[]): void => {
   if (!isNode(node) || node.tag !== 'Program') throw new Error('Invalid program')
-  const rest = (node.rest as unknown[] | null) ?? []
-  runStatements([node.first, ...rest], scope, output)
+  runStatements((node as unknown as { statements: unknown[] }).statements, scope, output)
 }
 
 const py = (input: string): string => {

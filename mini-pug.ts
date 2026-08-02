@@ -1,9 +1,9 @@
 import { isNode, packrat } from './packrat'
 
 const parsePug = packrat`
-  Pug = Newlines* first:Element rest:(Newlines ^Element)* Newlines* _ -> Pug
-  Element = name:Tag attrs:Attrs? text:InlineText? _ children:(>> Element <<)* -> Element
-  Attrs = "(" _ attr:Attr rest:(_ ^Attr)* _ ")" -> Attrs
+  Pug = Newlines* elements:(^Element Newlines*)+ Newlines* _ -> Pug
+  Element = name:Tag attrs:Attrs? text:InlineText? _ children:>> Element <<* -> Element
+  Attrs = "(" _ attrs:(^Attr _)+ _ ")" -> Attrs
   Attr = name:AttrName value:( _ "=" _ ^AttrValue )? -> Attr
   AttrName = $([a-z] [a-z0-9_-]*)
   AttrValue = "\\\"" ^$(NotQuote*) "\\\""
@@ -45,10 +45,8 @@ const render = (node: unknown): string => {
   if (node === null || node === undefined) return ''
   if (!isNode(node)) return ''
   switch (node.tag) {
-    case 'Pug': {
-      const rest = (node.rest as unknown[] | null) ?? []
-      return render([node.first, ...rest])
-    }
+    case 'Pug':
+      return render(node.elements)
     case 'Element':
       return renderElement(
         (node.name as string) ?? 'div',
@@ -63,8 +61,7 @@ const render = (node: unknown): string => {
 
 const renderAttrs = (attrs: unknown): string => {
   if (!isNode(attrs) || attrs.tag !== 'Attrs') return ''
-  const items = [attrs.attr, ...((attrs.rest as unknown[] | null) ?? [])]
-  return items.map(renderAttr).join('')
+  return ((attrs.attrs as unknown[] | null) ?? []).map(renderAttr).join('')
 }
 
 const renderAttr = (attr: unknown): string => {
