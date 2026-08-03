@@ -2171,7 +2171,7 @@ const packratGrammar: Grammar = {
 }
 
 const packrat = (input: TemplateStringsArray): (input: string, options?: ParseOptions) => Ok => {
-  if (import.meta.env.MODE === 'PHP') {
+  if (import.meta.env.MODE === 'php') {
     const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))
     return (input: string, options: ParseOptions = {}) => {
       const php = `<?php
@@ -2196,7 +2196,7 @@ JSON
       return result
     }
   }
-  if (import.meta.env.MODE === 'JS') {
+  if (import.meta.env.MODE === 'js') {
     return new Function(`
       ${emitJs(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))}
       return parse
