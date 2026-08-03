@@ -2170,10 +2170,6 @@ const packratGrammar: Grammar = {
   ]
 }
 
-import { writeFileSync } from 'fs'
-import { join } from 'path'
-import { tmpdir } from 'os'
-
 const packrat = (input: TemplateStringsArray): (input: string, options?: ParseOptions) => Ok => {
   if (import.meta.env.MODE === 'PHP') {
     const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))
