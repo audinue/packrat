@@ -837,6 +837,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       }
       return result
     }
+    export { parse }
   `
 }
 
@@ -2197,10 +2198,24 @@ JSON
     }
   }
   if (import.meta.env.MODE === 'js') {
-    return new Function(`
-      ${emitJs(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))}
-      return parse
-    `)()
+    const parser = emitJs(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))
+    return (input: string, options: ParseOptions = {}) => {
+      const js = `
+        ${parser}
+        const options = ${JSON.stringify({input, options})}
+        try {
+          console.log(JSON.stringify(parse(options.input, options)))
+        } catch (e) {
+          console.log(JSON.stringify({ __error: true }))
+        }
+      `
+      const out = Bun.spawnSync(['bun', '-'], { stdin: Buffer.from(js) }).stdout.toString()
+      const result = JSON.parse(out)
+      if (result?.__error) {
+        throw new Error()
+      }
+      return result
+    }
   }
   const grammar = parseGrammar(evaluateGrammar(packratGrammar, input.join('')))
   return (input: string, options: ParseOptions = {}) => {
