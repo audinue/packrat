@@ -96,6 +96,14 @@ describe('mini-golang', () => {
     expect(logs).toEqual(['20'])
   })
 
+  test('operator left associative', () => {
+    const logs = runGo(`
+      println(10 - 3 - 2)
+      println(10 / 2 / 5)
+    `)
+    expect(logs).toEqual(['5', '1'])
+  })
+
   test('negative number via unary', () => {
     const logs = runGo(`
       x := -5

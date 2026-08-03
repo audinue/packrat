@@ -11,9 +11,9 @@ const parsePy = packrat`
   While = "while" __ expression:Expression _ ":" _ block:Block -> While
   Block = statements:>> Statement <<+ -> Block
   Expression = Comparison
-  Comparison = first:Additive rest:(_ op:CompareOp _ term:Additive -> Binary)* -> Comparison
-  Additive = first:Multiplicative rest:(_ op:AdditiveOp _ term:Multiplicative -> Binary)* -> Additive
-  Multiplicative = first:Unary rest:(_ op:MultOp _ term:Unary -> Binary)* -> Multiplicative
+  Comparison = head:Additive tail:(_ op:CompareOp _ term:Additive -> Binary)* -> Comparison
+  Additive = head:Multiplicative tail:(_ op:AdditiveOp _ term:Multiplicative -> Binary)* -> Additive
+  Multiplicative = head:Unary tail:(_ op:MultOp _ term:Unary -> Binary)* -> Multiplicative
   Unary = "-" _ expression:Unary -> Negate / Primary
   Primary = Number / String / True / False / Id / "(" _ ^Expression _ ")"
   CompareOp = "==" / "!=" / "<=" / ">=" / "<" / ">"
@@ -85,8 +85,8 @@ const evalExpr = (node: unknown, scope: Scope): unknown => {
     case 'Negate':
       return -(evalExpr(node.expression, scope) as number)
     case 'Comparison': case 'Additive': case 'Multiplicative': {
-      let result = evalExpr(node.first, scope)
-      for (const binary of ((node.rest as unknown[] | null) ?? [])) {
+      let result = evalExpr(node.head, scope)
+      for (const binary of ((node.tail as unknown[] | null) ?? [])) {
         const item = binary as { op: string, term: unknown }
         result = evalBinary(item.op, result, evalExpr(item.term, scope))
       }

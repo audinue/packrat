@@ -30,6 +30,11 @@ describe('mini-js', () => {
     expect(runJs('const s = "x"; console.log(`s=${s} ok=${true}`)')).toEqual(['s=x ok=true'])
   })
 
+  test('operator left associative', () => {
+    expect(runJs('console.log(10 - 3 - 2);')).toEqual(['5'])
+    expect(runJs('console.log(10 / 2 / 5);')).toEqual(['1'])
+  })
+
   test('escape backtick dan dollar di template', () => {
     expect(runJs('console.log(`a\\`b`)')).toEqual(['a`b'])
     expect(runJs('console.log(`harga \\$5`)')).toEqual(['harga $5'])

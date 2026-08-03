@@ -20,12 +20,12 @@ const parse = packrat`
   Param = name:Id _ ":" _ type:Type -> Param
   Type = "int" / "float64" / "string" / "bool" / "[]" _ type:Type -> SliceType
   Expr = OrExpr
-  OrExpr = left:AndExpr _ op:"||" _ right:OrExpr -> BinaryExpr / AndExpr
-  AndExpr = left:EqExpr _ op:"&&" _ right:AndExpr -> BinaryExpr / EqExpr
-  EqExpr = left:RelExpr _ op:EqOp _ right:RelExpr -> BinaryExpr / RelExpr
-  RelExpr = left:AddExpr _ op:RelOp _ right:AddExpr -> BinaryExpr / AddExpr
-  AddExpr = left:MulExpr _ op:AddOp _ right:AddExpr -> BinaryExpr / MulExpr
-  MulExpr = left:UnaryExpr _ op:MulOp _ right:UnaryExpr -> BinaryExpr / UnaryExpr
+  OrExpr = head:AndExpr tail:(_ op:"||" _ term:AndExpr -> BinaryExpr)* -> OrExpr
+  AndExpr = head:EqExpr tail:(_ op:"&&" _ term:EqExpr -> BinaryExpr)* -> AndExpr
+  EqExpr = head:RelExpr tail:(_ op:EqOp _ term:RelExpr -> BinaryExpr)* -> EqExpr
+  RelExpr = head:AddExpr tail:(_ op:RelOp _ term:AddExpr -> BinaryExpr)* -> RelExpr
+  AddExpr = head:MulExpr tail:(_ op:AddOp _ term:MulExpr -> BinaryExpr)* -> AddExpr
+  MulExpr = head:UnaryExpr tail:(_ op:MulOp _ term:UnaryExpr -> BinaryExpr)* -> MulExpr
   UnaryExpr = op:UnaryOp _ expr:UnaryExpr -> UnaryExpr / PostfixExpr
   UnaryOp = "!" / "-"
   PostfixExpr = expr:Primary _ "[" _ index:Expr _ "]" -> IndexExpr / Primary
@@ -145,6 +145,32 @@ function extractCallArgs (argsNode: Ok | null, env: Env): Value[] {
   return [evalExpr(raw, env)]
 }
 
+function evalBinary (op: Ok, left: Value, right: Value): Value {
+  const opStr = typeof op === 'string' ? op : String(op)
+  switch (opStr) {
+    case '+': return toNumber(left) + toNumber(right)
+    case '-': return toNumber(left) - toNumber(right)
+    case '*': return toNumber(left) * toNumber(right)
+    case '/': {
+      const r = toNumber(right)
+      if (r === 0) throw new RuntimeError('division by zero')
+      const l = toNumber(left)
+      if (Number.isInteger(l) && Number.isInteger(r)) return Math.trunc(l / r)
+      return l / r
+    }
+    case '%': return toNumber(left) % toNumber(right)
+    case '==': return left === right
+    case '!=': return left !== right
+    case '<': return toNumber(left) < toNumber(right)
+    case '>': return toNumber(left) > toNumber(right)
+    case '<=': return toNumber(left) <= toNumber(right)
+    case '>=': return toNumber(left) >= toNumber(right)
+    case '&&': return isTruthy(left) && isTruthy(right)
+    case '||': return isTruthy(left) || isTruthy(right)
+    default: throw new RuntimeError(`unknown operator: ${opStr}`)
+  }
+}
+
 function evalExpr (node: Ok, env: Env): Value {
   if (typeof node === 'string' || node === null || isArr(node)) return node as Value
   const t = tag(node)
@@ -171,33 +197,13 @@ function evalExpr (node: Ok, env: Env): Value {
     }
     case 'Ident':
       return env.get(field<string>(node, 'name'))
-    case 'BinaryExpr': {
-      const op = field<Ok>(node, 'op')
-      const opStr = typeof op === 'string' ? op : String(op)
-      const left = evalExpr(field<Ok>(node, 'left'), env)
-      const right = evalExpr(field<Ok>(node, 'right'), env)
-      switch (opStr) {
-        case '+': return toNumber(left) + toNumber(right)
-        case '-': return toNumber(left) - toNumber(right)
-        case '*': return toNumber(left) * toNumber(right)
-        case '/': {
-          const r = toNumber(right)
-          if (r === 0) throw new RuntimeError('division by zero')
-          const l = toNumber(left)
-          if (Number.isInteger(l) && Number.isInteger(r)) return Math.trunc(l / r)
-          return l / r
-        }
-        case '%': return toNumber(left) % toNumber(right)
-        case '==': return left === right
-        case '!=': return left !== right
-        case '<': return toNumber(left) < toNumber(right)
-        case '>': return toNumber(left) > toNumber(right)
-        case '<=': return toNumber(left) <= toNumber(right)
-        case '>=': return toNumber(left) >= toNumber(right)
-        case '&&': return isTruthy(left) && isTruthy(right)
-        case '||': return isTruthy(left) || isTruthy(right)
-        default: throw new RuntimeError(`unknown operator: ${opStr}`)
+    case 'OrExpr': case 'AndExpr': case 'EqExpr': case 'RelExpr': case 'AddExpr': case 'MulExpr': {
+      let result = evalExpr(field<Ok>(node, 'head'), env)
+      const tail = (field<Ok | null>(node, 'tail') ?? []) as Ok[]
+      for (const binary of tail) {
+        result = evalBinary(field<Ok>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env))
       }
+      return result
     }
     case 'UnaryExpr': {
       const op = field<Ok>(node, 'op')

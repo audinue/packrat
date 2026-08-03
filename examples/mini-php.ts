@@ -26,12 +26,12 @@ const parse = packrat`
   Param = "$" name:Id -> Param
   ArgList = args:Expression { 2 ; _ "," _ } -> ArgList / args:Expression -> ArgList
   Expression = OrExpr
-  OrExpr = first:AndExpr rest:(_ op:"||" _ term:AndExpr -> Binary)* -> OrExpr
-  AndExpr = first:Comparison rest:(_ op:"&&" _ term:Comparison -> Binary)* -> AndExpr
-  Comparison = first:Concat rest:(_ op:CompareOp _ term:Concat -> Binary)* -> Comparison
-  Concat = first:Additive rest:(_ op:"." _ term:Additive -> Binary)* -> Concat
-  Additive = first:Multiplicative rest:(_ op:AddOp _ term:Multiplicative -> Binary)* -> Additive
-  Multiplicative = first:Unary rest:(_ op:MulOp _ term:Unary -> Binary)* -> Multiplicative
+  OrExpr = head:AndExpr tail:(_ op:"||" _ term:AndExpr -> Binary)* -> OrExpr
+  AndExpr = head:Comparison tail:(_ op:"&&" _ term:Comparison -> Binary)* -> AndExpr
+  Comparison = head:Concat tail:(_ op:CompareOp _ term:Concat -> Binary)* -> Comparison
+  Concat = head:Additive tail:(_ op:"." _ term:Additive -> Binary)* -> Concat
+  Additive = head:Multiplicative tail:(_ op:AddOp _ term:Multiplicative -> Binary)* -> Additive
+  Multiplicative = head:Unary tail:(_ op:MulOp _ term:Unary -> Binary)* -> Multiplicative
   Unary = op:UnaryOp _ expression:Unary -> UnaryExpr / PostfixExpr
   UnaryOp = "++" / "--" / "!" / "-"
   PostfixExpr = expression:Var _ "[" _ index:Expression _ "]" -> IndexExpr / expression:Var _ op:PostfixOp -> PostfixExpr / Primary
@@ -305,9 +305,9 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
       }
     }
     case 'OrExpr': case 'AndExpr': case 'Comparison': case 'Concat': case 'Additive': case 'Multiplicative': {
-      let result = evalExpr(field<Ok>(node, 'first'), env, output)
-      const rest = (field<Ok | null>(node, 'rest') ?? []) as Ok[]
-      for (const binary of rest) {
+      let result = evalExpr(field<Ok>(node, 'head'), env, output)
+      const tail = (field<Ok | null>(node, 'tail') ?? []) as Ok[]
+      for (const binary of tail) {
         result = evalBinary(field<string>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env, output))
       }
       return result
