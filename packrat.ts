@@ -34,9 +34,90 @@ type Node = Exclude<Ok, null | string | Ok[]>
 
 type ParseOptions = { file?: string, startRule?: string }
 
+type ResolvedGrammar = { rules: ResolvedRule[] }
+
+type ResolvedRule = { name: string, expression: ResolvedExpression, resultCount: number }
+
+type ResolvedExpression =
+  | { tag: 'Choice', expressions: ResolvedExpression[], result: string, saved: string }
+  | { tag: 'Node', expression: ResolvedExpression, name: string, result: string, saved: string }
+  | { tag: 'Sequence', expressions: ResolvedExpression[], result: string }
+  | { tag: 'Field', expression: ResolvedExpression, name: string, result: string }
+  | { tag: 'Extract', expression: ResolvedExpression, result: string }
+  | { tag: 'Text', expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'And', expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Not', expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Optional', expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Zero', expression: ResolvedExpression, result: string, saved: string, results: string }
+  | { tag: 'One', expression: ResolvedExpression, result: string, saved: string, results: string }
+  | { tag: 'Repeat', expression: ResolvedExpression, min: number, max?: number, separator?: ResolvedExpression, result: string, saved1: string, saved2: string, count: string, results: string }
+  | { tag: 'Reference', name: string, result: string }
+  | { tag: 'Except', expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Indent', expression: ResolvedExpression, result: string, saved: string, char: string }
+  | { tag: 'Class', predicates: Predicate[], insensitive?: boolean, negation?: boolean, result: string }
+  | { tag: 'Literal', value: string, insensitive?: boolean, result: string }
+  | { tag: 'Any', result: string }
+
 class ParseError extends Error {
   constructor (message: string, public location: Location) {
     super(message)
+  }
+}
+
+const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
+  return {
+    ...grammar,
+    rules: grammar.rules.map(rule => {
+      let resultCount = 0
+      let savedCount = 0
+      let charCount = 0
+      let countCount = 0
+      let resultsCount = 0
+      const nextResult = () => `result${++resultCount}`
+      const nextSaved = () => `saved${++savedCount}`
+      const nextResults = () => `results${++resultsCount}`
+      const nextCount = () => `count${++countCount}`
+      const nextChar = () => `char${++charCount}`
+      const resolveExpression = (expression: Expression): ResolvedExpression => {
+        switch (expression.tag) {
+          case 'Choice':
+            return { ...expression, expressions: expression.expressions.map(resolveExpression), result: nextResult(), saved: nextSaved() }
+          case 'Node':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'Sequence':
+            return { ...expression, expressions: expression.expressions.map(resolveExpression), result: nextResult() }
+          case 'Field':
+          case 'Extract':
+            const e = resolveExpression(expression.expression)
+            return { ...expression, expression: e, result: e.result }
+          case 'Text':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'And':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'Not':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'Optional':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'Zero':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
+          case 'One':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
+          case 'Repeat':
+            return { ...expression, expression: resolveExpression(expression.expression), separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator), result: nextResult(), saved1: nextSaved(), saved2: nextSaved(), count: nextCount(), results: nextResults() }
+          case 'Reference':
+            return { ...expression, result: nextResult() }
+          case 'Except':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+          case 'Indent':
+            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), char: nextChar() }
+          case 'Class':
+          case 'Literal':
+          case 'Any':
+            return { ...expression, result: nextResult() }
+        }
+      }
+      return { ...rule, expression: resolveExpression(rule.expression), resultCount }
+    })
   }
 }
 
@@ -273,10 +354,8 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
         const saved = offset
         const result = evaluateExpression(expression.expression)
         offset = saved
-        if (result === err) {
-          if (offset < input.length) {
-            return input.charAt(offset++)
-          }
+        if (result === err && offset < input.length) {
+          return input.charAt(offset++)
         }
         return err
       }
@@ -370,6 +449,395 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
     throw new ParseError(`Unexpected ${offset < input.length ? JSON.stringify(input.charAt(offset)) : 'end of file'} at ${location}\n\n${location.preview}`, location)
   }
   return result
+}
+
+const emitJS = (grammar: ResolvedGrammar) => {
+  const emitExpression = (expression: ResolvedExpression): string => {
+    switch (expression.tag) {
+      case 'Choice': {
+        let buffer = `${expression.result} = err`
+        for (const e of expression.expressions.toReversed()) {
+          buffer = `
+            ${emitExpression(e)}
+            if (${e.result} === err) {
+              offset = ${expression.saved}
+              ${buffer}
+            } else {
+              ${expression.result} = ${e.result}
+            }
+          `
+        }
+        return `
+          const ${expression.saved} = offset
+          ${buffer}
+        `
+      }
+      case 'Node': {
+        const fields = expression.expression.tag === 'Field'
+          ? [{ name: expression.expression.name, result: expression.expression.result }]
+          : expression.expression.tag === 'Sequence'
+            ? expression.expression.expressions
+              .map(e => {
+                if (e.tag !== 'Field') {
+                  return null
+                }
+                return { name: e.name, result: e.result }
+              })
+              .filter(field => field !== null)
+            : []
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          if (${expression.expression.result} === err) {
+            ${expression.result} = err
+          } else {
+            ${expression.result} = {
+              tag: ${JSON.stringify(expression.name)},
+              get location () {
+                return getLocation(${expression.saved})
+              },
+              ${fields.map(field => `${field.name}: ${field.result}`).join(', ')}
+            }
+          }
+        `
+      }
+      case 'Sequence': {
+        const extracts = expression.expressions.filter(e => e.tag === 'Extract')
+        let buffer
+        if (extracts.length === 1) {
+          buffer = `${expression.result} = ${extracts[0]!.result}`
+        } else if (extracts.length > 1) {
+          buffer = `${expression.result} = [${extracts.map(extract => extract.result).join(', ')}]`
+        } else {
+          buffer = `${expression.result} = [${expression.expressions.map(e => e.result).join(', ')}]`
+        }
+        for (const e of expression.expressions.toReversed()) {
+          buffer = `
+            ${emitExpression(e)}
+            if (${e.result} === err) {
+              ${expression.result} = err
+            } else {
+              ${buffer}
+            }
+          `
+        }
+        return buffer
+      }
+      case 'Field': case 'Extract': {
+        return emitExpression(expression.expression)
+      }
+      case 'Text': {
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          if (${expression.expression.result} === err) {
+            ${expression.result} = err
+          } else {
+            ${expression.result} = input.substring(${expression.saved}, offset)
+          }
+        `
+      }
+      case 'And': {
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          offset = ${expression.saved}
+          if (${expression.expression.result} === err) {
+            ${expression.result} = err
+          } else {
+            ${expression.result} = null
+          }
+        `
+      }
+      case 'Not': {
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          offset = ${expression.saved}
+          if (${expression.expression.result} === err) {
+            ${expression.result} = null
+          } else {
+            ${expression.result} = err
+          }
+        `
+      }
+      case 'Optional': {
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          if (${expression.expression.result} === err) {
+            offset = ${expression.saved}
+            ${expression.result} = null
+          } else {
+            ${expression.result} = ${expression.expression.result}
+          }
+        `
+      }
+      case 'Zero': {
+        return `
+          const ${expression.results} = []
+          while (true) {
+            const ${expression.saved} = offset
+            ${emitExpression(expression.expression)}
+            if (${expression.expression.result} === err) {
+              offset = ${expression.saved}
+              break
+            }
+            ${expression.results}.push(${expression.expression.result})
+          }
+          ${expression.result} = ${expression.results}
+        `
+      }
+      case 'One': {
+        return `
+          ${emitExpression(expression.expression)}
+          if (${expression.expression.result} === err) {
+            ${expression.result} = err
+          } else {
+            const ${expression.results} = [${expression.expression.result}]
+            while (true) {
+              const ${expression.saved} = offset
+              ${emitExpression(expression.expression)}
+              if (${expression.expression.result} === err) {
+                offset = ${expression.saved}
+                break
+              }
+              ${expression.results}.push(${expression.expression.result})
+            }
+            ${expression.result} = ${expression.results}
+          }
+        `
+      }
+      case 'Repeat': {
+        return `
+          const ${expression.results} = []
+          const ${expression.saved1} = offset
+          let ${expression.count} = 0
+          while (${expression.max === undefined ? 'true' : `${expression.count} < ${expression.max}`}) {
+            const ${expression.saved2} = offset
+            ${expression.separator === undefined ? '' : `
+              if (${expression.count} > 0) {
+                ${emitExpression(expression.separator)}
+                if (${expression.separator.result} === err) {
+                  offset = ${expression.saved2}
+                  break
+                }
+              }
+            `}
+            ${emitExpression(expression.expression)}
+            if (${expression.expression.result} === err) {
+              offset = ${expression.saved2}
+              break
+            }
+            ${expression.results}.push(${expression.expression.result})
+            ${expression.count}++
+          }
+          if (${expression.count} < ${expression.min}) {
+            offset = ${expression.saved1}
+            ${expression.result} = err
+          } else {
+            ${expression.result} = ${expression.results}
+          }
+        `
+      }
+      case 'Reference': {
+        return `${expression.result} = parse${expression.name}()`
+      }
+      case 'Except': {
+        return `
+          const ${expression.saved} = offset
+          ${emitExpression(expression.expression)}
+          offset = ${expression.saved}
+          if (${expression.expression.result} === err && offset < input.length) {
+            ${expression.result} = input.charAt(offset++)
+          } else {
+            ${expression.result} = err
+          }
+        `
+      }
+      case 'Indent': {
+        return `
+          if (offset < input.length) {
+            const ${expression.char} = input.charAt(offset)
+            if (${expression.char} === '\\r' || ${expression.char} === '\\n') {
+              offset++
+              if (${expression.char} === '\\r' && offset < input.length && input.charAt(offset) === '\\n') {
+                offset++
+              }
+              while (offset < input.length) {
+                let scan = offset
+                while (scan < input.length && input.charAt(scan) === ' ') {
+                  scan++
+                }
+                if (scan < input.length && (input.charAt(scan) === '\\n' || input.charAt(scan) === '\\r')) {
+                  offset = scan + 1
+                  if (input.charAt(scan) === '\\r' && offset < input.length && input.charAt(offset) === '\\n') {
+                    offset++
+                  }
+                  continue
+                }
+                break
+              }
+              const ${expression.saved} = offset
+              while (offset < input.length && input.charAt(offset) === ' ') {
+                offset++
+              }
+              const next = offset - ${expression.saved}
+              if (next > indent[indent.length - 1]) {
+                indent.push(next)
+                ${emitExpression(expression.expression)}
+                indent.pop()
+                ${expression.result} = ${expression.expression.result}
+              } else {
+                ${expression.result} = err
+              }
+            } else {
+              ${expression.result} = err
+            }
+          } else {
+            ${expression.result} = err
+          }
+        `
+      }
+      case 'Class': {
+        const predicates = expression.predicates.map(predicate => {
+          const value = expression.insensitive ? 'uppercased' : 'value'
+          switch (predicate.tag) {
+            case 'Equal':
+              return `${value} === ${JSON.stringify(expression.insensitive ? predicate.value.toUpperCase() : predicate.value)}`
+            case 'Between':
+              return `(${value} >= ${JSON.stringify(expression.insensitive ? predicate.min.toUpperCase() : predicate.min)} && ${value} <= ${JSON.stringify(expression.insensitive ? predicate.max.toUpperCase() : predicate.max)})`
+          }
+        }).join(' || ')
+        return `
+          if (offset < input.length) {
+            const value = input.charAt(offset)
+            ${expression.insensitive ? 'const uppercased = value.toUpperCase();' : ''}
+            if (${expression.negation ? '!' : ''}(${predicates})) {
+              offset++
+              ${expression.result} = value
+            } else {
+              ${expression.result} = err
+            }
+          } else {
+            ${expression.result} = err
+          }
+        `
+      }
+      case 'Literal': {
+        const length = expression.value.length
+        if (expression.insensitive) {
+          const value = JSON.stringify(expression.value.toUpperCase())
+          return `
+            if (offset + ${length} <= input.length) {
+              const value = input.substring(offset, offset + ${length})
+              if (value.toUpperCase() === ${value}) {
+                offset += ${length}
+                ${expression.result} = value
+              } else {
+                ${expression.result} = err
+              }
+            } else {
+              ${expression.result} = err
+            }
+          `
+        } else {
+          const value = JSON.stringify(expression.value)
+          return `
+            if (input.startsWith(${value}, offset)) {
+              offset += ${length}
+              ${expression.result} = ${value}
+            } else {
+              ${expression.result} = err
+            }
+          `
+        }
+      }
+      case 'Any': {
+        return `
+          if (offset < input.length) {
+            ${expression.result} = input.charAt(offset++)
+          } else {
+            ${expression.result} = err
+          }
+        `
+      }
+    }
+  }
+  const emitRule = (rule: ResolvedRule) => {
+    const results = [...Array(rule.resultCount).keys()].map(key => `result${key + 1}`).join(', ')
+    return `
+      const parse${rule.name} = rules[${JSON.stringify(rule.name)}] = () => {
+        const key = \`\${offset}@\${indent}\`
+        const entry = cache.${rule.name}[key]
+        if (entry) {
+          offset = entry.offset
+          indent = [...entry.indent]
+          return entry.result
+        }
+        let ${results}
+        ${emitExpression(rule.expression)}
+        cache.${rule.name}[key] = { offset, indent: [...indent], result: ${rule.expression.result} }
+        return ${rule.expression.result}
+      }
+    `
+  }
+  const rules = grammar.rules.map(emitRule).join('')
+  const cache = grammar.rules.map(rule => `${rule.name}: {}`).join(', ')
+  return `
+    class ParseError extends Error {
+      constructor (message, location) {
+        super(message)
+        this.location = location
+      }
+    }
+    const parse = (input, options = {}) => {
+      const err = Symbol()
+      const rules = Object.create(null)
+      const cache = {${cache}}
+      const getLocation = (offset) => {
+        let line = 1
+        let column = 1
+        for (let i = 0; i < offset; i++) {
+          const char = input.charCodeAt(i)
+          if (char === 13) {
+            if (input.charCodeAt(i + 1) === 10) {
+              i++
+            }
+            line++
+            column = 1
+            continue
+          }
+          if (char === 10) {
+            line++
+            column = 1
+            continue
+          }
+          column++
+        }
+        return {
+          file: options.file ?? '<unknown>',
+          line,
+          column,
+          get preview () {
+            return \`\${input.split(/\\r\\n|\\r|\\n/)[this.line - 1] ?? ''}\\n\${' '.repeat(this.column - 1)}^\`
+          },
+          toString () {
+            return \`\${this.file}:\${this.line}:\${this.column}\`
+          }
+        }
+      }
+      let offset = 0
+      let indent = [0]
+      ${rules}
+      const result = rules[options.startRule ?? ${JSON.stringify(grammar.rules[0]!.name)}]()
+      if (result === err || offset < input.length) {
+        const location = getLocation(offset)
+        throw new ParseError(\`Unexpected \${offset < input.length ? JSON.stringify(input.charAt(offset)) : 'end of file'} at \${location}\\n\\n\${location.preview}\`, location)
+      }
+      return result
+    }
+  `
 }
 
 const isNode = (value: unknown): value is Node => {
@@ -1323,7 +1791,13 @@ const packratGrammar: Grammar = {
   ]
 }
 
-const packrat = (input: TemplateStringsArray) => {
+const packrat = (input: TemplateStringsArray): (input: string, options?: ParseOptions) => Ok => {
+  if (import.meta.env.MODE === 'JS') {
+    return new Function(`
+      ${emitJS(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))}
+      return parse
+    `)()
+  }
   const grammar = parseGrammar(evaluateGrammar(packratGrammar, input.join('')))
   return (input: string, options: ParseOptions = {}) => {
     return evaluateGrammar(grammar, input, options)
