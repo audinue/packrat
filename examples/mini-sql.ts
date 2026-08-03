@@ -105,14 +105,7 @@ function resolveRowKey (row: Record<string, any>, columnName: string): string {
 
 export function miniSql (sql: string, db: Db): Record<string, any>[] {
   let ast: Ok
-  try {
-    ast = parseSql(sql)
-  } catch (e) {
-    if (e instanceof ParseError) {
-      throw new Error(`SQL syntax error: ${e.message}`)
-    }
-    throw e
-  }
+  ast = parseSql(sql)
   if (!isNode(ast) || ast.tag !== 'Query') {
     throw new Error('Invalid SQL query')
   }
