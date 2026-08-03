@@ -451,7 +451,7 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
   return result
 }
 
-const emitJS = (grammar: ResolvedGrammar) => {
+const emitJs = (grammar: ResolvedGrammar) => {
   const emitExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
       case 'Choice': {
@@ -712,7 +712,7 @@ const emitJS = (grammar: ResolvedGrammar) => {
         return `
           if (offset < input.length) {
             const value = input.charAt(offset)
-            ${expression.insensitive ? 'const uppercased = value.toUpperCase();' : ''}
+            ${expression.insensitive ? 'const uppercased = value.toUpperCase()' : ''}
             if (${expression.negation ? '!' : ''}(${predicates})) {
               offset++
               ${expression.result} = value
@@ -836,6 +836,385 @@ const emitJS = (grammar: ResolvedGrammar) => {
         throw new ParseError(\`Unexpected \${offset < input.length ? JSON.stringify(input.charAt(offset)) : 'end of file'} at \${location}\\n\\n\${location.preview}\`, location)
       }
       return result
+    }
+  `
+}
+
+const emitPhp = (grammar: ResolvedGrammar) => {
+  const emitExpression = (expression: ResolvedExpression): string => {
+    switch (expression.tag) {
+      case 'Choice': {
+        let buffer = `$${expression.result} = $this->err;`
+        for (const e of expression.expressions.toReversed()) {
+          buffer = `
+            ${emitExpression(e)}
+            if ($${e.result} === $this->err) {
+              $this->offset = $${expression.saved};
+              ${buffer}
+            } else {
+              $${expression.result} = $${e.result};
+            }
+          `
+        }
+        return `
+          $${expression.saved} = $this->offset;
+          ${buffer}
+        `
+      }
+      case 'Node': {
+        const fields = expression.expression.tag === 'Field'
+          ? [{ name: expression.expression.name, result: expression.expression.result }]
+          : expression.expression.tag === 'Sequence'
+            ? expression.expression.expressions
+              .map(e => {
+                if (e.tag !== 'Field') {
+                  return null
+                }
+                return { name: e.name, result: e.result }
+              })
+              .filter(field => field !== null)
+            : []
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          if ($${expression.expression.result} === $this->err) {
+            $${expression.result} = $this->err;
+          } else {
+            $${expression.result} = [
+              'tag' => ${JSON.stringify(expression.name)},
+              'location' => $this->getLocation($${expression.saved}),
+              ${fields.map(field => `'${field.name}' => $${field.result}`).join(', ')}
+            ];
+          }
+        `
+      }
+      case 'Sequence': {
+        const extracts = expression.expressions.filter(e => e.tag === 'Extract')
+        let buffer
+        if (extracts.length === 1) {
+          buffer = `$${expression.result} = $${extracts[0]!.result};`
+        } else if (extracts.length > 1) {
+          buffer = `$${expression.result} = [${extracts.map(extract => `$${extract.result}`).join(', ')}];`
+        } else {
+          buffer = `$${expression.result} = [${expression.expressions.map(e => `$${e.result}`).join(', ')}];`
+        }
+        for (const e of expression.expressions.toReversed()) {
+          buffer = `
+            ${emitExpression(e)}
+            if ($${e.result} === $this->err) {
+              $${expression.result} = $this->err;
+            } else {
+              ${buffer}
+            }
+          `
+        }
+        return buffer
+      }
+      case 'Field': case 'Extract': {
+        return emitExpression(expression.expression)
+      }
+      case 'Text': {
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          if ($${expression.expression.result} === $this->err) {
+            $${expression.result} = $this->err;
+          } else {
+            $${expression.result} = substr($this->input, $${expression.saved}, $this->offset - $${expression.saved});
+          }
+        `
+      }
+      case 'And': {
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          $this->offset = $${expression.saved};
+          if ($${expression.expression.result} === $this->err) {
+            $${expression.result} = $this->err;
+          } else {
+            $${expression.result} = null;
+          }
+        `
+      }
+      case 'Not': {
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          $this->offset = $${expression.saved};
+          if ($${expression.expression.result} === $this->err) {
+            $${expression.result} = null;
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+      case 'Optional': {
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          if ($${expression.expression.result} === $this->err) {
+            $this->offset = $${expression.saved};
+            $${expression.result} = null;
+          } else {
+            $${expression.result} = $${expression.expression.result};
+          }
+        `
+      }
+      case 'Zero': {
+        return `
+          $${expression.results} = [];
+          while (true) {
+            $${expression.saved} = $this->offset;
+            ${emitExpression(expression.expression)}
+            if ($${expression.expression.result} === $this->err) {
+              $this->offset = $${expression.saved};
+              break;
+            }
+            array_push($${expression.results}, $${expression.expression.result});
+          }
+          $${expression.result} = $${expression.results};
+        `
+      }
+      case 'One': {
+        return `
+          ${emitExpression(expression.expression)}
+          if ($${expression.expression.result} === $this->err) {
+            $${expression.result} = $this->err;
+          } else {
+            $${expression.results} = [$${expression.expression.result}];
+            while (true) {
+              $${expression.saved} = $this->offset;
+              ${emitExpression(expression.expression)}
+              if ($${expression.expression.result} === $this->err) {
+                $this->offset = $${expression.saved};
+                break;
+              }
+              array_push($${expression.results}, $${expression.expression.result});
+            }
+            $${expression.result} = $${expression.results};
+          }
+        `
+      }
+      case 'Repeat': {
+        return `
+          $${expression.results} = [];
+          $${expression.saved1} = $this->offset;
+          $${expression.count} = 0;
+          while (${expression.max === undefined ? 'true' : `$${expression.count} < ${expression.max}`}) {
+            $${expression.saved2} = $this->offset;
+            ${expression.separator === undefined ? '' : `
+              if ($${expression.count} > 0) {
+                ${emitExpression(expression.separator)}
+                if ($${expression.separator.result} === $this->err) {
+                  $this->offset = $${expression.saved2};
+                  break;
+                }
+              }
+            `}
+            ${emitExpression(expression.expression)}
+            if ($${expression.expression.result} === $this->err) {
+              $this->offset = $${expression.saved2};
+              break;
+            }
+            array_push($${expression.results}, $${expression.expression.result});
+            $${expression.count}++;
+          }
+          if ($${expression.count} < ${expression.min}) {
+            $this->offset = $${expression.saved1};
+            $${expression.result} = $this->err;
+          } else {
+            $${expression.result} = $${expression.results};
+          }
+        `
+      }
+      case 'Reference': {
+        return `$${expression.result} = $this->parse${expression.name}();`
+      }
+      case 'Except': {
+        return `
+          $${expression.saved} = $this->offset;
+          ${emitExpression(expression.expression)}
+          $this->offset = $${expression.saved};
+          if ($${expression.expression.result} === $this->err && $this->offset < strlen($this->input)) {
+            $${expression.result} = $this->input[$this->offset++];
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+      case 'Indent': {
+        return `
+          if ($this->offset < strlen($this->input)) {
+            $${expression.char} = $this->input[$this->offset];
+            if ($${expression.char} === "\\r" || $${expression.char} === "\\n") {
+              $this->offset++;
+              if ($${expression.char} === "\\r" && $this->offset < strlen($this->input) && $this->input[$this->offset] === "\\n") {
+                $this->offset++;
+              }
+              while ($this->offset < strlen($this->input)) {
+                $scan = $this->offset;
+                while ($scan < strlen($this->input) && $this->input[$scan] === ' ') {
+                  $scan++;
+                }
+                if ($scan < strlen($this->input) && ($this->input[$scan] === "\\n" || $this->input[$scan] === "\\r")) {
+                  $this->offset = $scan + 1;
+                  if ($this->input[$scan] === "\\r" && $this->offset < strlen($this->input) && $this->input[$this->offset] === "\\n") {
+                    $this->offset++;
+                  }
+                  continue;
+                }
+                break;
+              }
+              $${expression.saved} = $this->offset;
+              while ($this->offset < strlen($this->input) && $this->input[$this->offset] === ' ') {
+                $this->offset++;
+              }
+              $next = $this->offset - $${expression.saved};
+              if ($next > $this->indent[count($this->indent) - 1]) {
+                array_push($this->indent, $next);
+                ${emitExpression(expression.expression)}
+                array_pop($this->indent);
+                $${expression.result} = $${expression.expression.result};
+              } else {
+                $${expression.result} = $this->err;
+              }
+            } else {
+              $${expression.result} = $this->err;
+            }
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+      case 'Class': {
+        const predicates = expression.predicates.map(predicate => {
+          const value = expression.insensitive ? 'uppercased' : 'value'
+          switch (predicate.tag) {
+            case 'Equal':
+              return `$${value} === ${JSON.stringify(expression.insensitive ? predicate.value.toUpperCase() : predicate.value)}`
+            case 'Between':
+              return `($${value} >= ${JSON.stringify(expression.insensitive ? predicate.min.toUpperCase() : predicate.min)} && $${value} <= ${JSON.stringify(expression.insensitive ? predicate.max.toUpperCase() : predicate.max)})`
+          }
+        }).join(' || ')
+        return `
+          if ($this->offset < strlen($this->input)) {
+            $value = $this->input[$this->offset];
+            ${expression.insensitive ? '$uppercased = strtoupper($value);' : ''}
+            if (${expression.negation ? '!' : ''}(${predicates})) {
+              $this->offset++;
+              $${expression.result} = $value;
+            } else {
+              $${expression.result} = $this->err;
+            }
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+      case 'Literal': {
+        const length = expression.value.length
+        const value = JSON.stringify(expression.value).replace(/\$/g, '\\$')
+        return `
+          if (substr_compare($this->input, ${value}, $this->offset, ${length}, ${!!expression.insensitive}) === 0) {
+            $${expression.result} = substr($this->input, $this->offset, ${length});
+            $this->offset += ${length};
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+      case 'Any': {
+        return `
+          if ($this->offset < strlen($this->input)) {
+            $${expression.result} = $this->input[$this->offset++];
+          } else {
+            $${expression.result} = $this->err;
+          }
+        `
+      }
+    }
+  }
+  const emitRule = (rule: ResolvedRule) => {
+    return `
+      private function parse${rule.name}() {
+        $key = $this->offset . '@' . implode(',', $this->indent);
+        $entry = @$this->cache['${rule.name}'][$key];
+        if ($entry) {
+          $this->offset = $entry['offset'];
+          $this->indent = $entry['indent'];
+          return $entry['result'];
+        }
+        ${emitExpression(rule.expression)}
+        $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'result' => $${rule.expression.result}];
+        return $${rule.expression.result};
+      }
+    `
+  }
+  const rules = grammar.rules.map(emitRule).join('')
+  return `
+    class PackratParseError extends RuntimeException {
+      public $location;
+      function __construct($message, $location) {
+        parent::__construct($message);
+        $this->location = $location;
+      }
+    }
+    class Parser {
+      private $err;
+      private $input;
+      private $file;
+      private $offset;
+      private $indent;
+      private $cache;
+      function __construct() {
+        $this->err = new stdClass();
+      }
+      private function getLocation($offset) {
+        $input = $this->input;
+        $file = $this->file;
+        $line = 1;
+        $column = 1;
+        for ($i = 0; $i < $offset; $i++) {
+          $char = ord($input[$i]);
+          if ($char === 13) {
+            if (ord($input[$i + 1]) === 10) {
+              $i++;
+            }
+            $line++;
+            $column = 1;
+            continue;
+          }
+          if ($char === 10) {
+            $line++;
+            $column = 1;
+            continue;
+          }
+          $column++;
+        }
+        return [
+          'file' => $file ?? '<unknown>',
+          'line' => $line,
+          'column' => $column,
+          'preview' => fn () => (explode("\\n", str_replace(["\\r\\n", "\\r"], "\\n", $input))[$line - 1] ?? '') . "\\n" . str_repeat(' ', $column - 1) . '^',
+          'toString' => fn () => "$file:$line:$column"
+        ];
+      }
+      ${rules}
+      function parse($input, $file = null, $startRule = null) {
+        $this->input = $input;
+        $this->file = $file;
+        $this->offset = 0;
+        $this->indent = [0];
+        $result = $this->{'parse' . ($startRule ?? '${grammar.rules[0]?.name}')}();
+        if ($result === $this->err || $this->offset < strlen($input)) {
+          $location = $this->getLocation($this->offset);
+          $unexpected = $this->offset < strlen($input) ? json_encode($input[$this->offset], JSON_UNESCAPED_SLASHES) : 'end of file';
+          $locationString = ($location['toString'])();
+          $locationPreview = ($location['preview'])();
+          throw new PackratParseError("Unexpected $unexpected at $locationString\\n\\n$locationPreview", $location);
+        }
+        return $result;
+      }
     }
   `
 }
@@ -1791,10 +2170,39 @@ const packratGrammar: Grammar = {
   ]
 }
 
+import { writeFileSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+
 const packrat = (input: TemplateStringsArray): (input: string, options?: ParseOptions) => Ok => {
+  if (import.meta.env.MODE === 'PHP') {
+    const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))
+    return (input: string, options: ParseOptions = {}) => {
+      const php = `<?php
+      error_reporting(E_ALL);
+      ${parser}
+      $parser = new Parser();
+      $in = json_decode(<<<'JSON'
+${JSON.stringify({ input, startRule: options.startRule, file: options.file })}
+JSON
+, true);
+      try {
+        echo json_encode($parser->parse($in['input'], startRule: $in['startRule'] ?? null, file: $in['file'] ?? null));
+      } catch (PackratParseError $e) {
+        echo json_encode(['__error' => true, 'message' => $e->getMessage(), 'e' => $e]);
+      }
+      `
+      const out = Bun.spawnSync(['php'], { stdin: Buffer.from(php) }).stdout.toString()
+      const result = JSON.parse(out)
+      if (result?.__error) {
+        throw new Error()
+      }
+      return result
+    }
+  }
   if (import.meta.env.MODE === 'JS') {
     return new Function(`
-      ${emitJS(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))}
+      ${emitJs(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, input.join('')))))}
       return parse
     `)()
   }

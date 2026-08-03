@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { evaluateGrammar, packrat, packratGrammar, parseGrammar } from './packrat'
+import { packrat, packratGrammar, parseGrammar } from './packrat'
 
 describe('packrat', () => {
   test('Literal', () => {
@@ -288,6 +288,7 @@ describe('packrat', () => {
       SingleLineComment = "//" ~[\\r\\n]*
       MultiLineComment = "/*" ~"*/"* "*/"
     `
-    expect(parseGrammar(evaluateGrammar(packratGrammar, input))).toEqual(packratGrammar)
+    const parse = packrat([input] as unknown as TemplateStringsArray)
+    expect(parseGrammar(parse(input))).toEqual(packratGrammar)
   })
 })
