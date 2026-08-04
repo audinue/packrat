@@ -107,36 +107,6 @@ const compareValues = (a: Value, b: Value): number => {
   return sa < sb ? -1 : sa > sb ? 1 : 0
 }
 
-const evalBinary = (op: string, left: Value, right: Value): Value => {
-  switch (op) {
-    case '+': return toNumber(left) + toNumber(right)
-    case '-': return toNumber(left) - toNumber(right)
-    case '*': return toNumber(left) * toNumber(right)
-    case '/': {
-      const r = toNumber(right)
-      if (r === 0) throw new RuntimeError('division by zero')
-      return toNumber(left) / r
-    }
-    case '%': {
-      const r = toNumber(right)
-      if (r === 0) throw new RuntimeError('division by zero')
-      return toNumber(left) % r
-    }
-    case '.': return phpStr(left) + phpStr(right)
-    case '==': return phpEquals(left, right)
-    case '!=': return !phpEquals(left, right)
-    case '===': return left === right
-    case '!==': return left !== right
-    case '<': return compareValues(left, right) < 0
-    case '<=': return compareValues(left, right) <= 0
-    case '>': return compareValues(left, right) > 0
-    case '>=': return compareValues(left, right) >= 0
-    case '&&': return truthy(left) && truthy(right)
-    case '||': return truthy(left) || truthy(right)
-    default: throw new RuntimeError(`unknown operator: ${op}`)
-  }
-}
-
 const processDoubleEscapes = (s: string): string =>
   s
     .replace(/\\\\/g, '\u0001')
@@ -247,12 +217,30 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
         default: throw new RuntimeError(`unknown unary operator: ${op}`)
       }
     }
-    case 'OrBin': case 'AndBin': case 'CompBin': case 'ConcatBin': case 'AddBin': case 'MulBin': {
-      const left = evalExpr(field<Ok>(node, 'left'), env, output)
-      const op = field<string>(node, 'op')
-      const right = evalExpr(field<Ok>(node, 'right'), env, output)
-      return evalBinary(op, left, right)
+    case 'Add': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) + toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Sub': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) - toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Mul': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) * toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Div': {
+      const r = toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+      if (r === 0) throw new RuntimeError('division by zero')
+      return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) / r
     }
+    case 'Mod': {
+      const r = toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+      if (r === 0) throw new RuntimeError('division by zero')
+      return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) % r
+    }
+    case 'Concat': return phpStr(evalExpr(field<Ok>(node, 'left'), env, output)) + phpStr(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Eq': return phpEquals(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Neq': return !phpEquals(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'StrictEq': return evalExpr(field<Ok>(node, 'left'), env, output) === evalExpr(field<Ok>(node, 'right'), env, output)
+    case 'StrictNeq': return evalExpr(field<Ok>(node, 'left'), env, output) !== evalExpr(field<Ok>(node, 'right'), env, output)
+    case 'Lt': return compareValues(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output)) < 0
+    case 'Gt': return compareValues(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output)) > 0
+    case 'Lte': return compareValues(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output)) <= 0
+    case 'Gte': return compareValues(evalExpr(field<Ok>(node, 'left'), env, output), evalExpr(field<Ok>(node, 'right'), env, output)) >= 0
+    case 'And': return truthy(evalExpr(field<Ok>(node, 'left'), env, output)) && truthy(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Or': return truthy(evalExpr(field<Ok>(node, 'left'), env, output)) || truthy(evalExpr(field<Ok>(node, 'right'), env, output))
     case 'CallExpr': {
       const name = field<string>(node, 'name')
       const args = extractArgs(field<Ok | null>(node, 'args'), env, output)

@@ -15,28 +15,6 @@ const format = (value: unknown): string => {
   return String(value)
 }
 
-const evalBinary = (op: string, left: unknown, right: unknown): unknown => {
-  switch (op) {
-    case '+': {
-      if (typeof left === 'string' || typeof right === 'string') {
-        return String(left) + String(right)
-      }
-      return (left as number) + (right as number)
-    }
-    case '-': return (left as number) - (right as number)
-    case '*': return (left as number) * (right as number)
-    case '/': return (left as number) / (right as number)
-    case '%': return (left as number) % (right as number)
-    case '==': return left === right
-    case '!=': return left !== right
-    case '<': return (left as number) < (right as number)
-    case '<=': return (left as number) <= (right as number)
-    case '>': return (left as number) > (right as number)
-    case '>=': return (left as number) >= (right as number)
-    default: throw new Error(`Unknown operator: ${op}`)
-  }
-}
-
 const evalExpr = (node: unknown, scope: Scope): unknown => {
   if (!isNode(node)) throw new Error('Invalid expression')
   switch (node.tag) {
@@ -55,12 +33,22 @@ const evalExpr = (node: unknown, scope: Scope): unknown => {
     }
     case 'Negate':
       return -(evalExpr(node.expression, scope) as number)
-    case 'CompBin': case 'AddBin': case 'MulBin': {
+    case 'Add': {
       const left = evalExpr(node.left!, scope)
-      const op = node.op as string
       const right = evalExpr(node.right!, scope)
-      return evalBinary(op, left, right)
+      if (typeof left === 'string' || typeof right === 'string') return String(left) + String(right)
+      return (left as number) + (right as number)
     }
+    case 'Sub': return (evalExpr(node.left!, scope) as number) - (evalExpr(node.right!, scope) as number)
+    case 'Mul': return (evalExpr(node.left!, scope) as number) * (evalExpr(node.right!, scope) as number)
+    case 'Div': return (evalExpr(node.left!, scope) as number) / (evalExpr(node.right!, scope) as number)
+    case 'Mod': return (evalExpr(node.left!, scope) as number) % (evalExpr(node.right!, scope) as number)
+    case 'Eq': return evalExpr(node.left!, scope) === evalExpr(node.right!, scope)
+    case 'Neq': return evalExpr(node.left!, scope) !== evalExpr(node.right!, scope)
+    case 'Lt': return (evalExpr(node.left!, scope) as number) < (evalExpr(node.right!, scope) as number)
+    case 'Gt': return (evalExpr(node.left!, scope) as number) > (evalExpr(node.right!, scope) as number)
+    case 'Lte': return (evalExpr(node.left!, scope) as number) <= (evalExpr(node.right!, scope) as number)
+    case 'Gte': return (evalExpr(node.left!, scope) as number) >= (evalExpr(node.right!, scope) as number)
     default:
       throw new Error(`Unknown expression: ${node.tag}`)
   }

@@ -14,12 +14,12 @@ ExprStmt = expression:Expression _ ";"? -> ExprStmt
 ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
 Param = "..." name:Id -> RestParam / name:Id -> Param
 Expression = OrExpr
-OrExpr = left:OrExpr _ op:"||" _ right:AndExpr -> OrBin / AndExpr
-AndExpr = left:AndExpr _ op:"&&" _ right:EqExpr -> AndBin / EqExpr
-EqExpr = left:EqExpr _ op:EqOp _ right:RelExpr -> EqBin / RelExpr
-RelExpr = left:RelExpr _ op:RelOp _ right:AddExpr -> RelBin / AddExpr
-AddExpr = left:AddExpr _ op:AddOp _ right:MulExpr -> AddBin / MulExpr
-MulExpr = left:MulExpr _ op:MulOp _ right:UnaryExpr -> MulBin / UnaryExpr
+OrExpr = left:OrExpr _ "||" _ right:AndExpr -> Or / AndExpr
+AndExpr = left:AndExpr _ "&&" _ right:EqExpr -> And / EqExpr
+EqExpr = left:EqExpr _ "===" _ right:RelExpr -> StrictEq / left:EqExpr _ "!==" _ right:RelExpr -> StrictNeq / left:EqExpr _ "==" _ right:RelExpr -> Eq / left:EqExpr _ "!=" _ right:RelExpr -> Neq / left:EqExpr _ "<=" _ right:RelExpr -> Lte / left:EqExpr _ ">=" _ right:RelExpr -> Gte / left:EqExpr _ "<" _ right:RelExpr -> Lt / left:EqExpr _ ">" _ right:RelExpr -> Gt / RelExpr
+RelExpr = left:RelExpr _ "<" _ right:AddExpr -> Lt / left:RelExpr _ ">" _ right:AddExpr -> Gt / left:RelExpr _ "<=" _ right:AddExpr -> Lte / left:RelExpr _ ">=" _ right:AddExpr -> Gte / AddExpr
+AddExpr = left:AddExpr _ "+" _ right:MulExpr -> Add / left:AddExpr _ "-" _ right:MulExpr -> Sub / MulExpr
+MulExpr = left:MulExpr _ "*" _ right:UnaryExpr -> Mul / left:MulExpr _ "/" _ right:UnaryExpr -> Div / left:MulExpr _ "%" _ right:UnaryExpr -> Mod / UnaryExpr
 UnaryExpr = op:UnaryOp _ expression:UnaryExpr -> Unary / PostfixExpr
 UnaryOp = "++" / "--" / "!" / "-"
 PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
@@ -44,10 +44,6 @@ Ident = name:Id -> Ident
 Id = $( [a-z_]i [a-z0-9_]i* )
 Group = "(" _ ^Expression _ ")"
 ArgList = args:Expression { 2 ; _ "," _ } -> ArgList / args:Expression -> ArgList
-EqOp = "===" / "!==" / "==" / "!=" / "<=" / ">=" / "<" / ">"
-RelOp = "<=" / ">=" / "<" / ">"
-AddOp = "+" / "-"
-MulOp = "*" / "/" / "%"
 Number = "0" / $( [1-9] [0-9]* )
 Float = value:$( Number "." Number ) -> Float
 Int = value:Number -> Int

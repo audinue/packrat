@@ -8,14 +8,11 @@ Else = Newlines _ "else" _ ":" _ block:Block -> Else
 While = "while" __ expression:Expression _ ":" _ block:Block -> While
 Block = statements:>> Statement <<+ -> Block
 Expression = Comparison
-Comparison = left:Comparison _ op:CompareOp _ right:Additive -> CompBin / Additive
-Additive = left:Additive _ op:AdditiveOp _ right:Multiplicative -> AddBin / Multiplicative
-Multiplicative = left:Multiplicative _ op:MultOp _ right:Unary -> MulBin / Unary
+Comparison = left:Comparison _ "==" _ right:Additive -> Eq / left:Comparison _ "!=" _ right:Additive -> Neq / left:Comparison _ "<" _ right:Additive -> Lt / left:Comparison _ ">" _ right:Additive -> Gt / left:Comparison _ "<=" _ right:Additive -> Lte / left:Comparison _ ">=" _ right:Additive -> Gte / Additive
+Additive = left:Additive _ "+" _ right:Multiplicative -> Add / left:Additive _ "-" _ right:Multiplicative -> Sub / Multiplicative
+Multiplicative = left:Multiplicative _ "*" _ right:Unary -> Mul / left:Multiplicative _ "/" _ right:Unary -> Div / left:Multiplicative _ "%" _ right:Unary -> Mod / Unary
 Unary = "-" _ expression:Unary -> Negate / Primary
 Primary = Number / String / True / False / Id / "(" _ ^Expression _ ")"
-CompareOp = "==" / "!=" / "<=" / ">=" / "<" / ">"
-AdditiveOp = "+" / "-"
-MultOp = "*" / "/" / "%"
 Number = value:NumberText -> Number
 NumberText = "0" / $( [1-9] [0-9]* )
 String = value:("\"" ^$(NotQuote*) "\"") -> String

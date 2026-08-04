@@ -97,32 +97,6 @@ function extractCallArgs (argsNode: Ok | null, env: Env, output: string[]): Valu
   return [evalExpr(raw, env, output)]
 }
 
-function evalBinary (op: Ok, left: Value, right: Value): Value {
-  const opStr = typeof op === 'string' ? op : String(op)
-  switch (opStr) {
-    case '+': return toNumber(left) + toNumber(right)
-    case '-': return toNumber(left) - toNumber(right)
-    case '*': return toNumber(left) * toNumber(right)
-    case '/': {
-      const r = toNumber(right)
-      if (r === 0) throw new RuntimeError('division by zero')
-      const l = toNumber(left)
-      if (Number.isInteger(l) && Number.isInteger(r)) return Math.trunc(l / r)
-      return l / r
-    }
-    case '%': return toNumber(left) % toNumber(right)
-    case '==': return left === right
-    case '!=': return left !== right
-    case '<': return toNumber(left) < toNumber(right)
-    case '>': return toNumber(left) > toNumber(right)
-    case '<=': return toNumber(left) <= toNumber(right)
-    case '>=': return toNumber(left) >= toNumber(right)
-    case '&&': return isTruthy(left) && isTruthy(right)
-    case '||': return isTruthy(left) || isTruthy(right)
-    default: throw new RuntimeError(`unknown operator: ${opStr}`)
-  }
-}
-
 function evalExpr (node: Ok, env: Env, output: string[]): Value {
   if (typeof node === 'string' || node === null || isArr(node)) return node as Value
   const t = tag(node)
@@ -149,12 +123,25 @@ function evalExpr (node: Ok, env: Env, output: string[]): Value {
     }
     case 'Ident':
       return env.get(field<string>(node, 'name'))
-    case 'OrBin': case 'AndBin': case 'EqBin': case 'RelBin': case 'AddBin': case 'MulBin': {
-      const left = evalExpr(field<Ok>(node, 'left'), env, output)
-      const op = field<Ok>(node, 'op')
-      const right = evalExpr(field<Ok>(node, 'right'), env, output)
-      return evalBinary(op, left, right)
+    case 'Add': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) + toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Sub': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) - toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Mul': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) * toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Div': {
+      const r = toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+      if (r === 0) throw new RuntimeError('division by zero')
+      const l = toNumber(evalExpr(field<Ok>(node, 'left'), env, output))
+      if (Number.isInteger(l) && Number.isInteger(r)) return Math.trunc(l / r)
+      return l / r
     }
+    case 'Mod': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) % toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Eq': return evalExpr(field<Ok>(node, 'left'), env, output) === evalExpr(field<Ok>(node, 'right'), env, output)
+    case 'Neq': return evalExpr(field<Ok>(node, 'left'), env, output) !== evalExpr(field<Ok>(node, 'right'), env, output)
+    case 'Lt': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) < toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Gt': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) > toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Lte': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) <= toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Gte': return toNumber(evalExpr(field<Ok>(node, 'left'), env, output)) >= toNumber(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'And': return isTruthy(evalExpr(field<Ok>(node, 'left'), env, output)) && isTruthy(evalExpr(field<Ok>(node, 'right'), env, output))
+    case 'Or': return isTruthy(evalExpr(field<Ok>(node, 'left'), env, output)) || isTruthy(evalExpr(field<Ok>(node, 'right'), env, output))
     case 'UnaryExpr': {
       const op = field<Ok>(node, 'op')
       const opStr = typeof op === 'string' ? op : String(op)
