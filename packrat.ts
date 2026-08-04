@@ -261,7 +261,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     offset = endPos
     return result
   }
-  const evaluateExpression = (expression: Expression): Ok | Err => {
+  const evaluateExpression = (expression: ResolvedExpression): Ok | Err => {
     switch (expression.tag) {
       case 'Choice': {
         const saved = offset
@@ -840,19 +840,74 @@ const emitJs = (grammar: ResolvedGrammar) => {
   }
   const emitRule = (rule: ResolvedRule) => {
     const results = [...Array(rule.resultCount).keys()].map(key => `result${key + 1}`).join(', ')
+    if (!rule.isLeftRecursive) {
+      return `
+        const parse${rule.name} = rules[${JSON.stringify(rule.name)}] = () => {
+          const key = offset + '@' + indent.join(',')
+          const entry = cache.${rule.name}[key]
+          if (entry) {
+            offset = entry.offset
+            indent = entry.indent.slice()
+            return entry.result
+          }
+          let ${results}
+          ${emitExpression(rule.expression)}
+          if (${rule.expression.result} !== err) {
+            cache.${rule.name}[key] = { offset, indent: indent.slice(), result: ${rule.expression.result} }
+          }
+          return ${rule.expression.result}
+        }
+      `
+    }
     return `
       const parse${rule.name} = rules[${JSON.stringify(rule.name)}] = () => {
-        const key = \`\${offset}@\${indent}\`
-        const entry = cache.${rule.name}[key]
+        const start = offset
+        const key = start + '@' + indent.join(',')
+        const memo = cache.${rule.name}
+        const entry = memo[key]
         if (entry) {
+          if (entry.growing) {
+            const index = stack.findIndex(e => e.key === key)
+            if (index !== -1) {
+              const owner = stack[index]
+              owner.involved ??= new Set()
+              for (let i = index + 1; i < stack.length; i++) {
+                owner.involved.add(stack[i].name)
+              }
+            }
+          }
           offset = entry.offset
-          indent = [...entry.indent]
+          indent = entry.indent.slice()
           return entry.result
         }
         let ${results}
-        ${emitExpression(rule.expression)}
-        cache.${rule.name}[key] = { offset, indent: [...indent], result: ${rule.expression.result} }
-        return ${rule.expression.result}
+        const frame = { key, name: '${rule.name}', involved: null }
+        stack.push(frame)
+        let result = err
+        let endPos = start
+        memo[key] = { offset: start, indent: indent.slice(), result, growing: true }
+        while (true) {
+          offset = start
+          ${emitExpression(rule.expression)}
+          if (${rule.expression.result} === err) {
+            break
+          }
+          const attemptEnd = offset
+          if (result !== err && attemptEnd <= endPos) {
+            break
+          }
+          result = ${rule.expression.result}
+          endPos = attemptEnd
+          memo[key] = { offset: endPos, indent: indent.slice(), result, growing: true }
+        }
+        stack.pop()
+        if (stack.some(e => e.involved?.has('${rule.name}'))) {
+          delete memo[key]
+        } else {
+          memo[key] = { offset: endPos, indent: indent.slice(), result, growing: false }
+        }
+        offset = endPos
+        return result
       }
     `
   }
@@ -869,6 +924,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       const err = Symbol()
       const rules = Object.create(null)
       const cache = {${cache}}
+      const stack = []
       const getLocation = (offset) => {
         let line = 1
         let column = 1
@@ -1210,18 +1266,79 @@ const emitPhp = (grammar: ResolvedGrammar) => {
     }
   }
   const emitRule = (rule: ResolvedRule) => {
+    if (!rule.isLeftRecursive) {
+      return `
+        private function parse${rule.name}() {
+          $key = $this->offset . '@' . implode(',', $this->indent);
+          $entry = @$this->cache['${rule.name}'][$key];
+          if ($entry) {
+            $this->offset = $entry['offset'];
+            $this->indent = $entry['indent'];
+            return $entry['result'];
+          }
+          ${emitExpression(rule.expression)}
+          if ($${rule.expression.result} !== $this->err) {
+            $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'result' => $${rule.expression.result}];
+          }
+          return $${rule.expression.result};
+        }
+      `
+    }
     return `
       private function parse${rule.name}() {
-        $key = $this->offset . '@' . implode(',', $this->indent);
+        $start = $this->offset;
+        $key = $start . '@' . implode(',', $this->indent);
         $entry = @$this->cache['${rule.name}'][$key];
         if ($entry) {
+          if ($entry['growing']) {
+            foreach ($this->stack as $i => &$frame) {
+              if ($frame['key'] === $key) {
+                $frame['involved'] ??= [];
+                for ($j = $i + 1; $j < count($this->stack); $j++) {
+                  $frame['involved'][$this->stack[$j]['name']] = true;
+                }
+                break;
+              }
+            }
+          }
           $this->offset = $entry['offset'];
           $this->indent = $entry['indent'];
           return $entry['result'];
         }
-        ${emitExpression(rule.expression)}
-        $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'result' => $${rule.expression.result}];
-        return $${rule.expression.result};
+        $frame = ['key' => $key, 'name' => '${rule.name}', 'involved' => null];
+        $this->stack[] = $frame;
+        $result = $this->err;
+        $endPos = $start;
+        $this->cache['${rule.name}'][$key] = ['offset' => $start, 'indent' => $this->indent, 'result' => $result, 'growing' => true];
+        while (true) {
+          $this->offset = $start;
+          ${emitExpression(rule.expression)}
+          if ($${rule.expression.result} === $this->err) {
+            break;
+          }
+          $attemptEnd = $this->offset;
+          if ($result !== $this->err && $attemptEnd <= $endPos) {
+            break;
+          }
+          $result = $${rule.expression.result};
+          $endPos = $attemptEnd;
+          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'result' => $result, 'growing' => true];
+        }
+        array_pop($this->stack);
+        $deleteMemo = false;
+        foreach ($this->stack as $f) {
+          if ($f['involved'] && isset($f['involved']['${rule.name}'])) {
+            $deleteMemo = true;
+            break;
+          }
+        }
+        if ($deleteMemo) {
+          unset($this->cache['${rule.name}'][$key]);
+        } else {
+          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'result' => $result, 'growing' => false];
+        }
+        $this->offset = $endPos;
+        return $result;
       }
     `
   }
@@ -1241,8 +1358,10 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       private $offset;
       private $indent;
       private $cache;
+      private $stack;
       function __construct() {
         $this->err = new stdClass();
+        $this->stack = [];
       }
       private function getLocation($offset) {
         $input = $this->input;
@@ -2279,17 +2398,17 @@ JSON
     return (input: string, options: ParseOptions = {}) => {
       const js = `
         ${parser}
-        const options = ${JSON.stringify({input, options})}
+        const options = ${JSON.stringify(options)}
         try {
-          console.log(JSON.stringify(parse(options.input, options)))
+          console.log(JSON.stringify(parse(${JSON.stringify(input)}, options)))
         } catch (e) {
-          console.log(JSON.stringify({ __error: true }))
+          console.log(JSON.stringify({ __error: true, message: e.message }))
         }
       `
       const out = Bun.spawnSync(['bun', '-'], { stdin: Buffer.from(js) }).stdout.toString()
       const result = JSON.parse(out)
       if (result?.__error) {
-        throw new Error()
+        throw new Error(result.message)
       }
       return result
     }
