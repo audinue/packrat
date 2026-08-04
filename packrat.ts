@@ -102,7 +102,6 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             visited.add(expression.name)
             return isLeftRecursive(rules[expression.name]!)
           case 'Except':
-            return isLeftRecursive(expression.expression)
           case 'Indent':
             return isLeftRecursive(expression.expression)
           case 'Class': case 'Literal': case 'Any':
@@ -122,15 +121,11 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             const e = resolveExpression(expression.expression)
             return { ...expression, expression: e, result: e.result }
           case 'Text':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'And':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Not':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Optional':
             return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Zero':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
           case 'One':
             return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
           case 'Repeat':
