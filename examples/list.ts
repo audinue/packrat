@@ -1,15 +1,9 @@
 import { packrat, type Ok, type Node } from '../packrat'
 
-const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T
+const grammarText = await Bun.file(`${import.meta.dir}/list.packrat`).text()
+const parse = packrat(grammarText)
 
-const parse = packrat`
-  List = "[" _ items:Item { 1 ; _ "," _ } _ ","? _ "]" -> List
-  Item = value:Int -> Item
-  Int = value:Number -> Int
-  Number = "0" / $( [1-9] [0-9]* )
-  _ = Space*
-  Space = [ \\t\\r\\n]+
-`
+const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T
 
 export function parseList (source: string): number[] {
   const ast = parse(source) as Node

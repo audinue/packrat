@@ -1,36 +1,7 @@
 import { isNode, packrat } from '../packrat'
 
-const parsePy = packrat`
-  Program = Newlines* statements:(^Statement Newlines*)+ Newlines* _ -> Program
-  Statement = Assignment / Print / If / While
-  Assignment = name:Id _ "=" _ expression:Expression -> Assign
-  Print = "print" _ "(" _ argument:Expression? _ ")" -> Print
-  If = "if" __ expression:Expression _ ":" _ block:Block elifs:Elif* else:Else? -> If
-  Elif = Newlines _ "elif" __ expression:Expression _ ":" _ block:Block -> Elif
-  Else = Newlines _ "else" _ ":" _ block:Block -> Else
-  While = "while" __ expression:Expression _ ":" _ block:Block -> While
-  Block = statements:>> Statement <<+ -> Block
-  Expression = Comparison
-  Comparison = head:Additive tail:(_ op:CompareOp _ term:Additive -> Binary)* -> Comparison
-  Additive = head:Multiplicative tail:(_ op:AdditiveOp _ term:Multiplicative -> Binary)* -> Additive
-  Multiplicative = head:Unary tail:(_ op:MultOp _ term:Unary -> Binary)* -> Multiplicative
-  Unary = "-" _ expression:Unary -> Negate / Primary
-  Primary = Number / String / True / False / Id / "(" _ ^Expression _ ")"
-  CompareOp = "==" / "!=" / "<=" / ">=" / "<" / ">"
-  AdditiveOp = "+" / "-"
-  MultOp = "*" / "/" / "%"
-  Number = value:NumberText -> Number
-  NumberText = "0" / $( [1-9] [0-9]* )
-  String = value:("\\\"" ^$(NotQuote*) "\\\"") -> String
-  NotQuote = ~"\\\""
-  Id = value:$([a-z_] [a-z0-9_]*) -> Id
-  True = "True" -> True
-  False = "False" -> False
-  Newlines = [\\r\\n]+
-  _ = Space*
-  __ = Space+
-  Space = [\\t ]+
-`
+const grammarText = await Bun.file(`${import.meta.dir}/mini-python.packrat`).text()
+const parsePy = packrat(grammarText)
 
 type Scope = Map<string, unknown>
 

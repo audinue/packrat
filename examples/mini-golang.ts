@@ -1,59 +1,11 @@
 import { packrat, isNode, type Ok, type Node } from '../packrat'
 
+const grammarText = await Bun.file(`${import.meta.dir}/mini-golang.packrat`).text()
+const parse = packrat(grammarText)
+
 const tag = (node: Ok): string => (node as Node).tag
 const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T
 const isArr = (node: Ok): node is Ok[] => Array.isArray(node)
-
-const parse = packrat`
-  Program = _ statements:Statement { 0 ; _ } _ -> Program
-  Statement = VarDecl / ShortVarDecl / AssignStmt / IfStmt / ForStmt / FuncDecl / ReturnStmt / ExprStmt
-  VarDecl = "var" __ name:Id _ type:Type _ "=" _ value:Expr -> VarDecl
-  ShortVarDecl = name:Id _ ":=" _ value:Expr -> ShortVarDecl
-  AssignStmt = name:Id _ "=" _ value:Expr -> AssignStmt
-  IfStmt = "if" _ condition:Expr _ "{" _ body:Statement { 0 ; _ } _ "}" _ else:ElseClause? -> IfStmt
-  ElseClause = "else" _ "{" _ body:Statement { 0 ; _ } _ "}" -> ElseClause
-  ForStmt = "for" _ condition:Expr? _ "{" _ body:Statement { 0 ; _ } _ "}" -> ForStmt
-  FuncDecl = "func" __ name:Id _ "(" _ params:ParamList? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> FuncDecl
-  ReturnStmt = "return" _ value:Expr? -> ReturnStmt
-  ExprStmt = expr:Expr -> ExprStmt
-  ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
-  Param = name:Id _ ":" _ type:Type -> Param
-  Type = "int" / "float64" / "string" / "bool" / "[]" _ type:Type -> SliceType
-  Expr = OrExpr
-  OrExpr = head:AndExpr tail:(_ op:"||" _ term:AndExpr -> BinaryExpr)* -> OrExpr
-  AndExpr = head:EqExpr tail:(_ op:"&&" _ term:EqExpr -> BinaryExpr)* -> AndExpr
-  EqExpr = head:RelExpr tail:(_ op:EqOp _ term:RelExpr -> BinaryExpr)* -> EqExpr
-  RelExpr = head:AddExpr tail:(_ op:RelOp _ term:AddExpr -> BinaryExpr)* -> RelExpr
-  AddExpr = head:MulExpr tail:(_ op:AddOp _ term:MulExpr -> BinaryExpr)* -> AddExpr
-  MulExpr = head:UnaryExpr tail:(_ op:MulOp _ term:UnaryExpr -> BinaryExpr)* -> MulExpr
-  UnaryExpr = op:UnaryOp _ expr:UnaryExpr -> UnaryExpr / PostfixExpr
-  UnaryOp = "!" / "-"
-  PostfixExpr = expr:Primary _ "[" _ index:Expr _ "]" -> IndexExpr / Primary
-  Primary = IntLit / FloatLit / StringLit / BoolLit / SliceLit / CallExpr / GroupExpr / Ident
-  IntLit = value:Number -> IntLit
-  FloatLit = value:$( Number "." Number ) -> FloatLit
-  StringLit = value:GoString -> StringLit
-  GoString = "\\"" ^GoChar* "\\""
-  GoChar = "\\\\" . / ~"\\""
-  BoolLit = value:("true" / "false") -> BoolLit
-  SliceLit = "[" _ elements:ArgList? _ "]" -> SliceLit
-  CallExpr = name:Id _ "(" _ args:ArgList? _ ")" -> CallExpr
-  GroupExpr = "(" _ ^Expr _ ")"
-  Ident = name:Id -> Ident
-  ArgList = args:Expr { 2 ; _ "," _ } -> ArgList / args:Expr -> ArgList
-  EqOp = "==" / "!="
-  RelOp = "<=" / ">=" / "<" / ">"
-  AddOp = "+" / "-"
-  MulOp = "*" / "/" / "%"
-  Number = "0" / $( [1-9] [0-9]* )
-  Id = $( [a-z_]i [a-z0-9_]i* )
-  _ = Space*
-  __ = Space+
-  Space = WhiteSpace / SingleLineComment / MultiLineComment
-  WhiteSpace = [ \\t\\r\\n]+
-  SingleLineComment = "//" ~[\\r\\n]*
-  MultiLineComment = "/*" ~"*/"* "*/"
-`
 
 type Value = number | string | boolean | Value[] | null | FunctionValue
 

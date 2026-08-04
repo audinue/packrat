@@ -1,0 +1,57 @@
+Program = PhpProgram / EchoProgram
+PhpProgram = "<?php" _ statements:Statement { 0 ; _ } _ "?>"? _ -> Program
+EchoProgram = "<?=" _ statements:( ^( expression:Expression -> Echo ) ) _ ";"? _ ">" _ -> Program
+Statement = Echo / AssignStmt / IfStmt / WhileStmt / ForStmt / FuncDecl / ReturnStmt / EmptyStmt / ExprStmt
+Echo = "echo" _ args:ArgList _ ";" -> Echo
+AssignStmt = "$" name:Id _ "=" _ value:Expression _ ";" -> Assign
+IfStmt = "if" _ "(" _ condition:Expression _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" _ elseif:ElseIf { 0 ; _ } _ else:Else? -> IfStmt / "if" _ "(" _ condition:Expression _ ")" _ body:Statement _ else:Else? -> IfStmt
+ElseIf = "elseif" _ "(" _ condition:Expression _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> ElseIf / "elseif" _ "(" _ condition:Expression _ ")" _ body:Statement -> ElseIf
+Else = "else" _ "{" _ body:Statement { 0 ; _ } _ "}" -> Else / "else" _ body:Statement -> Else
+WhileStmt = "while" _ "(" _ condition:Expression _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> While / "while" _ "(" _ condition:Expression _ ")" _ body:Statement -> While
+ForStmt = "for" _ "(" _ init:ForInit? _ ";" _ condition:Expression? _ ";" _ update:ForUpdate? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> For
+ForInit = "$" name:Id _ "=" _ value:Expression -> Assign
+ForUpdate = "$" name:Id _ "=" _ value:Expression -> Assign / Expression
+FuncDecl = "function" __ name:Id _ "(" _ params:ParamList? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> FuncDecl
+ReturnStmt = "return" _ value:Expression? _ ";" -> Return
+EmptyStmt = ";" -> Empty
+ExprStmt = expression:Expression _ ";" -> ExprStmt
+ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
+Param = "$" name:Id -> Param
+ArgList = args:Expression { 2 ; _ "," _ } -> ArgList / args:Expression -> ArgList
+Expression = OrExpr
+OrExpr = head:AndExpr tail:(_ op:"||" _ term:AndExpr -> Binary)* -> OrExpr
+AndExpr = head:Comparison tail:(_ op:"&&" _ term:Comparison -> Binary)* -> AndExpr
+Comparison = head:Concat tail:(_ op:CompareOp _ term:Concat -> Binary)* -> Comparison
+Concat = head:Additive tail:(_ op:"." _ term:Additive -> Binary)* -> Concat
+Additive = head:Multiplicative tail:(_ op:AddOp _ term:Multiplicative -> Binary)* -> Additive
+Multiplicative = head:Unary tail:(_ op:MulOp _ term:Unary -> Binary)* -> Multiplicative
+Unary = op:UnaryOp _ expression:Unary -> UnaryExpr / PostfixExpr
+UnaryOp = "++" / "--" / "!" / "-"
+PostfixExpr = expression:Var _ "[" _ index:Expression _ "]" -> IndexExpr / expression:Var _ op:PostfixOp -> PostfixExpr / Primary
+PostfixOp = "++" / "--"
+Primary = Float / Int / String / SingleString / True / False / Null / CallExpr / Var / ArrayLit / Group
+Int = value:NumberText -> Int
+Float = value:$( NumberText "." NumberText ) -> Float
+NumberText = "0" / $( [1-9] [0-9]* )
+String = value:("\"" ^StringItem* "\"") -> String
+StringItem = "\\" . / ~"\""
+SingleString = value:("'" ^SingleItem* "'") -> SqString
+SingleItem = "\\" . / ~"'"
+True = "true"i -> True
+False = "false"i -> False
+Null = "null"i -> Null
+CallExpr = name:Id _ "(" _ args:ArgList? _ ")" -> CallExpr
+Var = "$" name:Id -> Var
+ArrayLit = "[" _ elements:ArgList? _ "]" -> ArrayLit
+Group = "(" _ ^Expression _ ")"
+Id = $( [a-z_]i [a-z0-9_]i* )
+CompareOp = "===" / "!==" / "==" / "!=" / "<=" / ">=" / "<" / ">"
+AddOp = "+" / "-"
+MulOp = "*" / "/" / "%"
+_ = Space*
+__ = Space+
+Space = WhiteSpace / SingleLineComment / HashComment / MultiLineComment
+WhiteSpace = [ \t\r\n]+
+SingleLineComment = "//" ~[\r\n]*
+HashComment = "#" ~[\r\n]*
+MultiLineComment = "/*" ~"*/"* "*/"

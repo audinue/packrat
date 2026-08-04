@@ -1,0 +1,59 @@
+Program = _ statements:Statement { 0 ; _ } _ -> Program
+Statement = VarDecl / AssignStmt / IfStmt / WhileStmt / ForStmt / FuncDecl / ReturnStmt / ExprStmt
+VarDecl = keyword:("const" / "let") __ name:Id _ "=" _ value:Expression _ ";"? -> VarDecl
+AssignStmt = name:Id _ "=" _ value:Expression _ ";"? -> AssignStmt
+IfStmt = "if" _ "(" _ condition:Expression _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" _ else:Else? -> IfStmt
+Else = "else" _ "{" _ body:Statement { 0 ; _ } _ "}" -> Else
+WhileStmt = "while" _ "(" _ condition:Expression _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> While
+ForStmt = "for" _ "(" _ init:ForInit? _ ";" _ condition:Expression? _ ";" _ update:ForUpdate? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> For
+ForInit = keyword:("const" / "let") __ name:Id _ "=" _ value:Expression -> VarDecl / name:Id _ "=" _ value:Expression -> Assign
+ForUpdate = name:Id _ "=" _ value:Expression -> Assign / Expression
+FuncDecl = "function" __ name:Id _ "(" _ params:ParamList? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> FuncDecl
+ReturnStmt = "return" _ value:Expression? _ ";"? -> Return
+ExprStmt = expression:Expression _ ";"? -> ExprStmt
+ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
+Param = "..." name:Id -> RestParam / name:Id -> Param
+Expression = OrExpr
+OrExpr = head:AndExpr tail:(_ op:"||" _ term:AndExpr -> Binary)* -> OrExpr
+AndExpr = head:EqExpr tail:(_ op:"&&" _ term:EqExpr -> Binary)* -> AndExpr
+EqExpr = head:RelExpr tail:(_ op:EqOp _ term:RelExpr -> Binary)* -> EqExpr
+RelExpr = head:AddExpr tail:(_ op:RelOp _ term:AddExpr -> Binary)* -> RelExpr
+AddExpr = head:MulExpr tail:(_ op:AddOp _ term:MulExpr -> Binary)* -> AddExpr
+MulExpr = head:UnaryExpr tail:(_ op:MulOp _ term:UnaryExpr -> Binary)* -> MulExpr
+UnaryExpr = op:UnaryOp _ expression:UnaryExpr -> Unary / PostfixExpr
+UnaryOp = "++" / "--" / "!" / "-"
+PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
+PostfixTail = "[" _ index:Expression _ "]" -> Index / "." _ name:Id -> Member / op:PostfixOp -> Postfix
+PostfixOp = "++" / "--"
+Primary = TaggedTemplate / CallExpr / TemplateString / Bool / Null / ArrayLit / Group / Float / Int / String / Ident
+TaggedTemplate = name:Id _ template:TemplateString -> TaggedTemplate
+CallExpr = callee:$( Id "." Id ) _ "(" _ args:ArgList? _ ")" -> CallExpr / name:Id _ "(" _ args:ArgList? _ ")" -> CallExpr
+TemplateString = "`" parts:TemplatePart* "`" -> TemplateString
+TemplatePart = Interpolation / TextPart
+Interpolation = "${" _ expression:Expression _ "}" -> Interpolation
+TextPart = value:$( ( "\\" . / ~("`" / "${") )+ ) -> TextPart
+String = value:DoubleString -> String / value:SingleString -> String
+DoubleString = "\"" ^DChar* "\""
+DChar = "\\" . / ~"\""
+SingleString = "'" ^SChar* "'"
+SChar = "\\" . / ~"'"
+Bool = value:("true" / "false") -> Bool
+Null = "null" -> Null
+ArrayLit = "[" _ elements:ArgList? _ "]" -> ArrayLit
+Ident = name:Id -> Ident
+Id = $( [a-z_]i [a-z0-9_]i* )
+Group = "(" _ ^Expression _ ")"
+ArgList = args:Expression { 2 ; _ "," _ } -> ArgList / args:Expression -> ArgList
+EqOp = "===" / "!==" / "==" / "!=" / "<=" / ">=" / "<" / ">"
+RelOp = "<=" / ">=" / "<" / ">"
+AddOp = "+" / "-"
+MulOp = "*" / "/" / "%"
+Number = "0" / $( [1-9] [0-9]* )
+Float = value:$( Number "." Number ) -> Float
+Int = value:Number -> Int
+_ = Space*
+__ = Space+
+Space = WhiteSpace / SingleLineComment / MultiLineComment
+WhiteSpace = [ \t\r\n]+
+SingleLineComment = "//" ~[\r\n]*
+MultiLineComment = "/*" ~"*/"* "*/"

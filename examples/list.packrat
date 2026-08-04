@@ -1,0 +1,6 @@
+List = "[" _ items:Item { 1 ; _ "," _ } _ ","? _ "]" -> List
+Item = value:Int -> Item
+Int = value:Number -> Int
+Number = "0" / $( [1-9] [0-9]* )
+_ = Space*
+Space = [ \t\r\n]+
