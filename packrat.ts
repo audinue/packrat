@@ -1,3 +1,4 @@
+// SECTION: Types
 type Grammar = { rules: Rule[] }
 
 type Rule = { name: string, expression: Expression }
@@ -64,6 +65,7 @@ class ParseError extends Error {
   }
 }
 
+// SECTION: resolveGrammar
 const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
   return {
@@ -165,6 +167,7 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
 
 const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.expression)
 
+// SECTION: evaluateGrammar
 const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule]))
   const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], indentSize: number | undefined, result: Ok | Err, growing: boolean }>]))
@@ -540,6 +543,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
   return result
 }
 
+// SECTION: emitJs
 const emitJs = (grammar: ResolvedGrammar) => {
   const emitExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
@@ -1004,6 +1008,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
   `
 }
 
+// SECTION: emitPhp
 const emitPhp = (grammar: ResolvedGrammar) => {
   const emitExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
@@ -1469,6 +1474,7 @@ const isNode = (value: unknown): value is Node => {
   return value !== null && typeof value === 'object' && 'tag' in value && typeof value.tag === 'string'
 }
 
+// SECTION: parseGrammar
 const parseGrammar = (value: Ok): Grammar => {
   if (!isNode(value)) {
     throw new Error()
@@ -1587,6 +1593,7 @@ const parseGrammar = (value: Ok): Grammar => {
   return { rules }
 }
 
+// SECTION: packratGrammar
 const packratGrammar: Grammar = {
   rules: [
     {
@@ -2418,6 +2425,7 @@ const packratGrammar: Grammar = {
 
 const resolvedPackratGrammar = resolveGrammar(packratGrammar)
 
+// SECTION: packrat
 const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Ok => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
