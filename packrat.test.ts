@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { packrat, packratGrammar, parseGrammar } from './packrat'
+import { readFileSync } from 'node:fs'
 
 describe('packrat', () => {
   test('Literal', () => {
@@ -241,8 +242,8 @@ describe('packrat', () => {
     expect(() => parse('a\nb')).toThrow()
   })
 
-  test('Self host', async () => {
-    const input = await Bun.file(`${import.meta.dir}/packrat.packrat`).text()
+  test('Self host', () => {
+    const input = readFileSync(`${import.meta.dir}/packrat.packrat`, 'utf-8')
     const parse = packrat(input)
     expect(parseGrammar(parse(input))).toEqual(packratGrammar)
   })

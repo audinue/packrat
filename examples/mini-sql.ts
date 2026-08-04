@@ -1,6 +1,7 @@
 import { packrat, isNode, type Ok, ParseError } from '../packrat'
+import { readFileSync } from 'node:fs'
 
-const grammarText = await Bun.file(`${import.meta.dir}/mini-sql.packrat`).text()
+const grammarText = readFileSync(`${import.meta.dir}/mini-sql.packrat`, 'utf-8')
 const parseSql = packrat(grammarText)
 
 type Db = Record<string, Record<string, any>[]>

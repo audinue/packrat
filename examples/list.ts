@@ -1,6 +1,7 @@
 import { packrat, type Ok, type Node } from '../packrat'
+import { readFileSync } from 'node:fs'
 
-const grammarText = await Bun.file(`${import.meta.dir}/list.packrat`).text()
+const grammarText = readFileSync(`${import.meta.dir}/list.packrat`, 'utf-8')
 const parse = packrat(grammarText)
 
 const field = <T = Ok>(node: Ok, name: string): T => (node as Node)[name] as unknown as T

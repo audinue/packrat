@@ -1,6 +1,7 @@
 import { packrat, isNode, type Ok, type Node } from '../packrat'
+import { readFileSync } from 'node:fs'
 
-const grammarText = await Bun.file(`${import.meta.dir}/mini-js.packrat`).text()
+const grammarText = readFileSync(`${import.meta.dir}/mini-js.packrat`, 'utf-8')
 const parse = packrat(grammarText)
 
 const tag = (node: Ok): string => (node as Node).tag

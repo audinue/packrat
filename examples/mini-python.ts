@@ -1,6 +1,7 @@
 import { isNode, packrat } from '../packrat'
+import { readFileSync } from 'node:fs'
 
-const grammarText = await Bun.file(`${import.meta.dir}/mini-python.packrat`).text()
+const grammarText = readFileSync(`${import.meta.dir}/mini-python.packrat`, 'utf-8')
 const parsePy = packrat(grammarText)
 
 type Scope = Map<string, unknown>
