@@ -137,12 +137,12 @@ function processEscapes (s: string): string {
 }
 
 /** Extract raw argument values from an ArgList node or single expr */
-function extractCallArgs (argsNode: Ok | null, env: Env): Value[] {
+function extractCallArgs (argsNode: Ok | null, env: Env, output: string[]): Value[] {
   if (argsNode === null) return []
   // ArgList node: { tag: 'ArgList', args: [...] }
   const raw = field<Ok>(argsNode, 'args')
-  if (isArr(raw)) return raw.map(a => evalExpr(a, env))
-  return [evalExpr(raw, env)]
+  if (isArr(raw)) return raw.map(a => evalExpr(a, env, output))
+  return [evalExpr(raw, env, output)]
 }
 
 function evalBinary (op: Ok, left: Value, right: Value): Value {
@@ -171,7 +171,7 @@ function evalBinary (op: Ok, left: Value, right: Value): Value {
   }
 }
 
-function evalExpr (node: Ok, env: Env): Value {
+function evalExpr (node: Ok, env: Env, output: string[]): Value {
   if (typeof node === 'string' || node === null || isArr(node)) return node as Value
   const t = tag(node)
   switch (t) {
@@ -198,17 +198,17 @@ function evalExpr (node: Ok, env: Env): Value {
     case 'Ident':
       return env.get(field<string>(node, 'name'))
     case 'OrExpr': case 'AndExpr': case 'EqExpr': case 'RelExpr': case 'AddExpr': case 'MulExpr': {
-      let result = evalExpr(field<Ok>(node, 'head'), env)
+      let result = evalExpr(field<Ok>(node, 'head'), env, output)
       const tail = (field<Ok | null>(node, 'tail') ?? []) as Ok[]
       for (const binary of tail) {
-        result = evalBinary(field<Ok>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env))
+        result = evalBinary(field<Ok>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env, output))
       }
       return result
     }
     case 'UnaryExpr': {
       const op = field<Ok>(node, 'op')
       const opStr = typeof op === 'string' ? op : String(op)
-      const expr = evalExpr(field<Ok>(node, 'expr'), env)
+      const expr = evalExpr(field<Ok>(node, 'expr'), env, output)
       switch (opStr) {
         case '-': return -toNumber(expr)
         case '!': return !isTruthy(expr)
@@ -216,8 +216,8 @@ function evalExpr (node: Ok, env: Env): Value {
       }
     }
     case 'IndexExpr': {
-      const arr = evalExpr(field<Ok>(node, 'expr'), env)
-      const idx = evalExpr(field<Ok>(node, 'index'), env)
+      const arr = evalExpr(field<Ok>(node, 'expr'), env, output)
+      const idx = evalExpr(field<Ok>(node, 'index'), env, output)
       if (!Array.isArray(arr)) throw new RuntimeError('cannot index non-array')
       const i = toNumber(idx)
       if (i < 0 || i >= arr.length || !Number.isInteger(i))
@@ -226,9 +226,9 @@ function evalExpr (node: Ok, env: Env): Value {
     }
     case 'CallExpr': {
       const name = field<string>(node, 'name')
-      const args = extractCallArgs(field<Ok | null>(node, 'args'), env)
+      const args = extractCallArgs(field<Ok | null>(node, 'args'), env, output)
       if (name === 'println') {
-        console.log(args.map(valToString).join(' '))
+        output.push(args.map(valToString).join(' '))
         return null
       }
       if (name === 'len') {
@@ -247,7 +247,7 @@ function evalExpr (node: Ok, env: Env): Value {
       }
       const fn = env.get(name)
       if (fn && typeof fn === 'object' && tag(fn as Ok) === 'function') {
-        return callFunction(fn as unknown as FunctionValue, args)
+        return callFunction(fn as unknown as FunctionValue, args, output)
       }
       throw new RuntimeError(`undefined function: ${name}`)
     }
@@ -255,14 +255,14 @@ function evalExpr (node: Ok, env: Env): Value {
       const elements = field<Ok | null>(node, 'elements')
       if (elements === null) return []
       const raw = field<Ok>(elements, 'args')
-      if (isArr(raw)) return raw.map(e => evalExpr(e, env))
-      return [evalExpr(raw, env)]
+      if (isArr(raw)) return raw.map(e => evalExpr(e, env, output))
+      return [evalExpr(raw, env, output)]
     }
   }
   return node as unknown as Value
 }
 
-function callFunction (fn: FunctionValue, args: Value[]): Value {
+function callFunction (fn: FunctionValue, args: Value[], output: string[]): Value {
   const localEnv = new Env(fn.closure)
   if (args.length !== fn.params.length) {
     throw new RuntimeError(`${fn.name}: expected ${fn.params.length} arguments, got ${args.length}`)
@@ -271,7 +271,7 @@ function callFunction (fn: FunctionValue, args: Value[]): Value {
     localEnv.define(fn.params[i]!.name, args[i]!)
   }
   try {
-    execBlock(fn.body, localEnv)
+    execBlock(fn.body, localEnv, output)
   } catch (e) {
     if (e instanceof ReturnSignal) return e.value
     throw e
@@ -279,35 +279,35 @@ function callFunction (fn: FunctionValue, args: Value[]): Value {
   return null
 }
 
-function execBlock (body: Ok, env: Env): void {
+function execBlock (body: Ok, env: Env, output: string[]): void {
   const stmts = isArr(body) ? body : [body]
-  for (const stmt of stmts) execStmt(stmt, env)
+  for (const stmt of stmts) execStmt(stmt, env, output)
 }
 
-function execStmt (node: Ok, env: Env): void {
+function execStmt (node: Ok, env: Env, output: string[]): void {
   if (typeof node === 'string' || node === null || isArr(node)) return
   const t = tag(node)
   switch (t) {
     case 'VarDecl': {
-      env.define(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env))
+      env.define(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env, output))
       break
     }
     case 'ShortVarDecl': {
-      env.define(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env))
+      env.define(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env, output))
       break
     }
     case 'AssignStmt': {
-      env.set(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env))
+      env.set(field<string>(node, 'name'), evalExpr(field<Ok>(node, 'value'), env, output))
       break
     }
     case 'IfStmt': {
-      const condition = evalExpr(field<Ok>(node, 'condition'), env)
+      const condition = evalExpr(field<Ok>(node, 'condition'), env, output)
       if (isTruthy(condition)) {
-        execBlock(field<Ok>(node, 'body'), new Env(env))
+        execBlock(field<Ok>(node, 'body'), new Env(env), output)
       } else {
         const elseNode = field<Ok | null>(node, 'else')
         if (elseNode !== null && isNode(elseNode)) {
-          execBlock(field<Ok>(elseNode, 'body'), new Env(env))
+          execBlock(field<Ok>(elseNode, 'body'), new Env(env), output)
         }
       }
       break
@@ -317,12 +317,12 @@ function execStmt (node: Ok, env: Env): void {
       const body = field<Ok>(node, 'body')
       if (condNode === null) {
         while (true) {
-          try { execBlock(body, new Env(env)) }
+          try { execBlock(body, new Env(env), output) }
           catch (e) { if (e instanceof ReturnSignal) throw e }
         }
       } else {
-        while (isTruthy(evalExpr(condNode, env))) {
-          try { execBlock(body, new Env(env)) }
+        while (isTruthy(evalExpr(condNode, env, output))) {
+          try { execBlock(body, new Env(env), output) }
           catch (e) { if (e instanceof ReturnSignal) throw e }
         }
       }
@@ -348,10 +348,10 @@ function execStmt (node: Ok, env: Env): void {
     }
     case 'ReturnStmt': {
       const valueNode = field<Ok | null>(node, 'value')
-      throw new ReturnSignal(valueNode === null ? null : evalExpr(valueNode, env))
+      throw new ReturnSignal(valueNode === null ? null : evalExpr(valueNode, env, output))
     }
     case 'ExprStmt': {
-      evalExpr(field<Ok>(node, 'expr'), env)
+      evalExpr(field<Ok>(node, 'expr'), env, output)
       break
     }
   }
@@ -367,19 +367,15 @@ function fieldType (typeNode: Ok): string {
 }
 
 export function runGo (source: string): string[] {
-  const logs: string[] = []
-  const originalLog = console.log
-  console.log = (...args: unknown[]) => { logs.push(args.map(String).join(' ')) }
+  const output: string[] = []
   try {
     const ast = parse(source.trim() + '\n')
     const globalEnv = new Env()
-    execBlock(field<Ok>(ast as Node, 'statements'), globalEnv)
+    execBlock(field<Ok>(ast as Node, 'statements'), globalEnv, output)
   } catch (e) {
     if (!(e instanceof ReturnSignal)) throw e
-  } finally {
-    console.log = originalLog
   }
-  return logs
+  return output
 }
 
 export function parseGo (source: string): Ok {
