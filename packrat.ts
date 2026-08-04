@@ -138,7 +138,8 @@ const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.express
 
 const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
-  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], result: Ok | Err }>]))
+  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], result: Ok | Err, growing: boolean }>]))
+  const stack = [] as { key: string, name: string, involved: Set<string> | null }[]
   const err = Symbol('err')
   type Err = typeof err
   let offset = 0
@@ -176,15 +177,51 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
     }
   }
   const evaluateRule = (name: string): Ok | Err => {
-    const key = `${offset}@${indent}`
-    const entry = cache[name]![key]
+    const start = offset
+    const key = `${start}@${indent}`
+    const memo = cache[name]!
+    const entry = memo[key]
     if (entry) {
+      if (entry.growing) {
+        const index = stack.findIndex(e => e.key === key)
+        if (index !== -1) {
+          const owner = stack[index]!
+          owner.involved ??= new Set()
+          for (const e of stack.slice(index + 1)) {
+            owner.involved.add(e.name)
+          }
+        }
+      }
       offset = entry.offset
       indent = [...entry.indent]
       return entry.result
     }
-    const result = evaluateExpression(rules[name]!)
-    cache[name]![key] = { offset, indent: [...indent], result }
+    const frame = { key, name, involved: null }
+    stack.push(frame)
+    let result: Ok | Err = err
+    let endPos = start
+    memo[key] = { offset, indent: [...indent], result: result, growing: true }
+    while (true) {
+      offset = start
+      const attempt = evaluateExpression(rules[name]!)
+      if (attempt === err) {
+        break
+      }
+      const attemptEnd = offset
+      if (result !== err && attemptEnd <= endPos) {
+        break
+      }
+      result = attempt
+      endPos = attemptEnd
+      memo[key] = { offset: endPos, indent: [...indent], result: result, growing: true }
+    }
+    stack.pop()
+    if (stack.some(e => e.involved?.has(name))) {
+      delete memo[key]
+    } else {
+      memo[key] = { offset: endPos, indent: [...indent], result: result, growing: false }
+    }
+    offset = endPos
     return result
   }
   const evaluateExpression = (expression: Expression): Ok | Err => {
