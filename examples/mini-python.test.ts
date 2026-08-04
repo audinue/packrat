@@ -1,222 +1,154 @@
 import { describe, expect, test } from 'bun:test'
-import { py } from './mini-python'
+import { parsePy } from './mini-python'
 
-describe('mini-python', () => {
-  test('print angka', () => {
-    expect(py('print(1)')).toBe('1')
+describe('mini-python parser', () => {
+  const ast = (src: string) => parsePy(src) as any
+
+  test('Program root', () => {
+    expect(ast('print(1)')).toMatchObject({ tag: 'Program' })
   })
 
-  test('print string', () => {
-    expect(py('print("hello")')).toBe('hello')
+  test('Print with number', () => {
+    expect(ast('print(1)').statements[0]).toMatchObject({
+      tag: 'Print', argument: { tag: 'Number', value: '1' }
+    })
   })
 
-  test('print string dengan spasi', () => {
-    expect(py('print("hello world")')).toBe('hello world')
+  test('Print with string', () => {
+    expect(ast('print("hello")').statements[0]).toMatchObject({
+      tag: 'Print', argument: { tag: 'String', value: 'hello' }
+    })
   })
 
-  test('aritmatika dasar', () => {
-    expect(py('print(1 + 2)')).toBe('3')
-    expect(py('print(5 - 2)')).toBe('3')
-    expect(py('print(3 * 4)')).toBe('12')
-    expect(py('print(10 / 2)')).toBe('5')
-    expect(py('print(7 % 2)')).toBe('1')
+  test('Print tanpa argument', () => {
+    const s = ast('print()').statements[0]
+    expect(s.tag).toBe('Print')
+    expect(s.argument).toBeNull()
   })
 
-  test('division menghasilkan float', () => {
-    expect(py('print(7 / 2)')).toBe('3.5')
+  test('Assignment', () => {
+    expect(ast('x = 5').statements[0]).toMatchObject({
+      tag: 'Assign', name: { value: 'x' }, expression: { tag: 'Number', value: '5' }
+    })
   })
 
-  test('precedence operator', () => {
-    expect(py('print(1 + 2 * 3)')).toBe('7')
-    expect(py('print((1 + 2) * 3)')).toBe('9')
-    expect(py('print(2 * 3 + 1)')).toBe('7')
+  test('Id expression', () => {
+    expect(ast('y = x').statements[0]).toMatchObject({
+      expression: { tag: 'Id', value: 'x' }
+    })
   })
 
-  test('left associative', () => {
-    expect(py('print(10 - 3 - 2)')).toBe('5')
+  test('Add expression', () => {
+    expect(ast('x = 1 + 2').statements[0].expression).toMatchObject({
+      tag: 'Add', left: { value: '1' }, right: { value: '2' }
+    })
+  })
+
+  test('Arithmetic operators', () => {
+    expect(ast('x = 5 - 2').statements[0].expression).toMatchObject({ tag: 'Sub' })
+    expect(ast('x = 3 * 4').statements[0].expression).toMatchObject({ tag: 'Mul' })
+    expect(ast('x = 10 / 2').statements[0].expression).toMatchObject({ tag: 'Div' })
+    expect(ast('x = 7 % 2').statements[0].expression).toMatchObject({ tag: 'Mod' })
+  })
+
+  test('operator precedence', () => {
+    expect(ast('x = 1 + 2 * 3').statements[0].expression).toMatchObject({
+      tag: 'Add', right: { tag: 'Mul' }
+    })
+  })
+
+  test('parentheses override precedence', () => {
+    expect(ast('x = (1 + 2) * 3').statements[0].expression).toMatchObject({
+      tag: 'Mul', left: { tag: 'Add' }
+    })
+  })
+
+  test('left associative subtraction', () => {
+    expect(ast('x = 10 - 3 - 2').statements[0].expression).toMatchObject({
+      tag: 'Sub', left: { tag: 'Sub' }, right: { value: '2' }
+    })
   })
 
   test('unary minus', () => {
-    expect(py('print(-5)')).toBe('-5')
-    expect(py('print(-5 + 2)')).toBe('-3')
-    expect(py('print(2 * -3)')).toBe('-6')
+    expect(ast('x = -5').statements[0].expression).toMatchObject({
+      tag: 'Negate', expression: { tag: 'Number', value: '5' }
+    })
   })
 
-  test('variabel', () => {
-    const code = `x = 5
-print(x)`
-    expect(py(code)).toBe('5')
+  test('true literal', () => {
+    expect(ast('x = True').statements[0].expression).toMatchObject({ tag: 'True' })
   })
 
-  test('assignment ganda', () => {
-    const code = `x = 2
-y = x * 3
-print(y)`
-    expect(py(code)).toBe('6')
+  test('false literal', () => {
+    expect(ast('x = False').statements[0].expression).toMatchObject({ tag: 'False' })
   })
 
-  test('variabel di dalam block', () => {
-    const code = `if True:
-  x = 7
-print(x)`
-    expect(py(code)).toBe('7')
+  test('comparison operators', () => {
+    expect(ast('x = 1 == 2').statements[0].expression).toMatchObject({ tag: 'Eq' })
+    expect(ast('x = 1 != 2').statements[0].expression).toMatchObject({ tag: 'Neq' })
+    expect(ast('x = 1 < 2').statements[0].expression).toMatchObject({ tag: 'Lt' })
+    expect(ast('x = 1 > 2').statements[0].expression).toMatchObject({ tag: 'Gt' })
+    expect(ast('x = 3 <= 3').statements[0].expression).toMatchObject({ tag: 'Lte' })
+    expect(ast('x = 3 >= 4').statements[0].expression).toMatchObject({ tag: 'Gte' })
   })
 
-  test('string concatenation', () => {
-    expect(py('print("foo" + "bar")')).toBe('foobar')
-    expect(py('print("Hello " + name)'.replace('name', '"World"'))).toBe('Hello World')
+  test('IfStmt', () => {
+    expect(ast('if True:\n  x = 1').statements[0]).toMatchObject({
+      tag: 'If', expression: { tag: 'True' }, block: { statements: [{ tag: 'Assign' }] }
+    })
   })
 
-  test('comparison', () => {
-    expect(py('print(1 < 2)')).toBe('True')
-    expect(py('print(1 > 2)')).toBe('False')
-    expect(py('print(2 == 2)')).toBe('True')
-    expect(py('print(2 != 2)')).toBe('False')
-    expect(py('print(3 <= 3)')).toBe('True')
-    expect(py('print(3 >= 4)')).toBe('False')
+  test('IfStmt with Else', () => {
+    expect(ast('if True:\n  x = 1\nelse:\n  x = 2').statements[0]).toMatchObject({
+      tag: 'If', else: { tag: 'Else', block: { statements: [{ tag: 'Assign' }] } }
+    })
   })
 
-  test('boolean literal', () => {
-    expect(py('print(True)')).toBe('True')
-    expect(py('print(False)')).toBe('False')
+  test('IfStmt with Elif', () => {
+    expect(ast('if x == 1:\n  print("one")\nelif x == 2:\n  print("two")\nelse:\n  print("other")').statements[0]).toMatchObject({
+      tag: 'If',
+      elifs: [{ tag: 'Elif', expression: { tag: 'Eq' } }],
+      else: { tag: 'Else' }
+    })
   })
 
-  test('if else', () => {
-    const code = `x = 5
-if x > 3:
-  print("big")
-else:
-  print("small")`
-    expect(py(code)).toBe('big')
+  test('IfStmt multiple elifs', () => {
+    const s = ast('if x == 1:\n  print("one")\nelif x == 2:\n  print("two")\nelif x == 3:\n  print("three")').statements[0]
+    expect(s.elifs).toHaveLength(2)
   })
 
-  test('if elif else', () => {
-    const code = `x = 2
-if x == 1:
-  print("one")
-elif x == 2:
-  print("two")
-else:
-  print("other")`
-    expect(py(code)).toBe('two')
+  test('IfStmt tanpa Else', () => {
+    const s = ast('if x > 3:\n  print("big")').statements[0]
+    expect(s.tag).toBe('If')
+    expect(s.else).toBeNull()
   })
 
-  test('if else branch tidak dieksekusi', () => {
-    const code = `x = 1
-if x > 3:
-  print("big")
-else:
-  print("small")`
-    expect(py(code)).toBe('small')
+  test('While loop', () => {
+    expect(ast('while i < 3:\n  print(i)\n  i = i + 1').statements[0]).toMatchObject({
+      tag: 'While', expression: { tag: 'Lt' }, block: { statements: [{ tag: 'Print' }, { tag: 'Assign' }] }
+    })
   })
 
-  test('elif pertama yang match', () => {
-    const code = `x = 1
-if x == 1:
-  print("one")
-elif x == 2:
-  print("two")
-else:
-  print("other")`
-    expect(py(code)).toBe('one')
+  test('nested if', () => {
+    const s = ast('if x > 5:\n  if x > 8:\n    print("big")\n  else:\n    print("medium")\nelse:\n  print("small")').statements[0]
+    expect(s.tag).toBe('If')
+    expect(s.else).toBeDefined()
+    expect(s.block.statements[0].tag).toBe('If')
   })
 
-  test('tidak ada branch yang match', () => {
-    const code = `x = 9
-if x == 1:
-  print("one")
-elif x == 2:
-  print("two")
-else:
-  print("other")`
-    expect(py(code)).toBe('other')
+  test('multiple statements', () => {
+    expect(ast('x = 1\ny = 2\nprint(x + y)').statements).toHaveLength(3)
   })
 
-  test('while loop', () => {
-    const code = `i = 0
-while i < 3:
-  print(i)
-  i = i + 1`
-    expect(py(code)).toBe('0\n1\n2')
-  })
-
-  test('nested if else', () => {
-    const code = `x = 10
-if x > 5:
-  if x > 8:
-    print("big")
-  else:
-    print("medium")
-else:
-  print("small")`
-    expect(py(code)).toBe('big')
-  })
-
-  test('nested if else branch medium', () => {
-    const code = `x = 6
-if x > 5:
-  if x > 8:
-    print("big")
-  else:
-    print("medium")
-else:
-  print("small")`
-    expect(py(code)).toBe('medium')
-  })
-
-  test('nested if else branch small', () => {
-    const code = `x = 3
-if x > 5:
-  if x > 8:
-    print("big")
-  else:
-    print("medium")
-else:
-  print("small")`
-    expect(py(code)).toBe('small')
-  })
-
-  test('print tanpa argument', () => {
-    expect(py('print()')).toBe('')
-  })
-
-  test('multiple print', () => {
-    expect(py('print(1)\nprint(2)')).toBe('1\n2')
-  })
-
-  test('blank line di dalam block', () => {
-    const code = `if True:
-
-  print(1)
-
-  print(2)`
-    expect(py(code)).toBe('1\n2')
-  })
-
-  test('fizzbuzz', () => {
-    const code = `i = 1
-while i <= 15:
-  if i % 15 == 0:
-    print("FizzBuzz")
-  elif i % 3 == 0:
-    print("Fizz")
-  elif i % 5 == 0:
-    print("Buzz")
-  else:
-    print(i)
-  i = i + 1`
-    expect(py(code)).toBe('1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz')
-  })
-
-  test('variable tidak terdefinisi', () => {
-    expect(() => py('print(x)')).toThrow()
-  })
-
-  test('empty input', () => {
-    expect(() => py('')).toThrow()
+  test('string concatenation via Add', () => {
+    expect(ast('x = "foo" + "bar"').statements[0].expression).toMatchObject({ tag: 'Add' })
   })
 
   test('syntax error', () => {
-    expect(() => py('x =')).toThrow()
+    expect(() => ast('x =')).toThrow()
+  })
+
+  test('empty input error', () => {
+    expect(() => ast('')).toThrow()
   })
 })

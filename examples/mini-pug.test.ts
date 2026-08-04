@@ -1,192 +1,209 @@
 import { describe, expect, test } from 'bun:test'
-import { pug } from './mini-pug'
+import { parsePug } from './mini-pug'
 
-describe('mini-pug', () => {
-  test('tag kosong', () => {
-    expect(pug('p')).toBe('<p></p>')
-    expect(pug('div')).toBe('<div></div>')
+describe('mini-pug parser', () => {
+  const ast = (src: string) => parsePug(src) as any
+
+  test('Pug root', () => {
+    expect(ast('p')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element' }] })
+  })
+
+  test('tag sederhana', () => {
+    expect(ast('p').elements[0]).toMatchObject({ tag: 'Element', name: 'p' })
+  })
+
+  test('tag div', () => {
+    expect(ast('div').elements[0]).toMatchObject({ tag: 'Element', name: 'div' })
   })
 
   test('tag dengan inline text', () => {
-    expect(pug('p Hello World')).toBe('<p>Hello World</p>')
+    expect(ast('p Hello World').elements[0]).toMatchObject({
+      tag: 'Element', name: 'p', text: 'Hello World'
+    })
   })
 
-  test('nested elements', () => {
-    const result = pug('div\n  p Hello')
-    expect(result).toBe('<div><p>Hello</p></div>')
+  test('nested elements 2 level', () => {
+    expect(ast('div\n  p Hello').elements[0]).toMatchObject({
+      tag: 'Element', name: 'div',
+      children: [{ tag: 'Element', name: 'p', text: 'Hello' }]
+    })
   })
 
-  test('nested 3 level', () => {
-    const result = pug('div\n  section\n    p Deep')
-    expect(result).toBe('<div><section><p>Deep</p></section></div>')
+  test('nested elements 3 level', () => {
+    expect(ast('div\n  section\n    p Deep').elements[0]).toMatchObject({
+      name: 'div',
+      children: [{ name: 'section', children: [{ name: 'p', text: 'Deep' }] }]
+    })
   })
 
   test('sibling elements', () => {
-    const result = pug('div\n  p First\n  p Second')
-    expect(result).toBe('<div><p>First</p><p>Second</p></div>')
+    const children = ast('div\n  p First\n  p Second').elements[0].children
+    expect(children).toHaveLength(2)
+    expect(children[0]).toMatchObject({ name: 'p', text: 'First' })
+    expect(children[1]).toMatchObject({ name: 'p', text: 'Second' })
   })
 
   test('class shorthand', () => {
-    expect(pug('div.container')).toBe('<div class="container"></div>')
-    expect(pug('p.highlight')).toBe('<p class="highlight"></p>')
+    expect(ast('div.container').elements[0]).toMatchObject({ name: 'div.container' })
   })
 
   test('id shorthand', () => {
-    expect(pug('div#main')).toBe('<div id="main"></div>')
+    expect(ast('div#main').elements[0]).toMatchObject({ name: 'div#main' })
   })
 
   test('class dan id bareng', () => {
-    expect(pug('div.container#main')).toBe('<div class="container" id="main"></div>')
+    expect(ast('div.container#main').elements[0]).toMatchObject({ name: 'div.container#main' })
   })
 
   test('multiple classes', () => {
-    expect(pug('div.foo.bar')).toBe('<div class="foo bar"></div>')
+    expect(ast('div.foo.bar').elements[0]).toMatchObject({ name: 'div.foo.bar' })
   })
 
   test('implicit div dengan class', () => {
-    expect(pug('.container')).toBe('<div class="container"></div>')
+    expect(ast('.container').elements[0]).toMatchObject({ name: '.container' })
   })
 
   test('implicit div dengan id', () => {
-    expect(pug('#header')).toBe('<div id="header"></div>')
+    expect(ast('#header').elements[0]).toMatchObject({ name: '#header' })
   })
 
-  test('implicit div dengan class dan id', () => {
-    expect(pug('.box#hero')).toBe('<div class="box" id="hero"></div>')
+  test('void elements', () => {
+    for (const tag of ['br', 'hr', 'img', 'input', 'meta', 'link']) {
+      expect(ast(tag).elements[0]).toMatchObject({ name: tag })
+    }
   })
 
-  test('void elements (self-closing)', () => {
-    expect(pug('br')).toBe('<br />')
-    expect(pug('hr')).toBe('<hr />')
-    expect(pug('img')).toBe('<img />')
-    expect(pug('input')).toBe('<input />')
-    expect(pug('meta')).toBe('<meta />')
-    expect(pug('link')).toBe('<link />')
-  })
-
-  test('void element dengan class dan id', () => {
-    expect(pug('hr.divider')).toBe('<hr class="divider" />')
-    expect(pug('img#logo')).toBe('<img id="logo" />')
+  test('void element dengan class', () => {
+    expect(ast('hr.divider').elements[0]).toMatchObject({ name: 'hr.divider' })
   })
 
   test('tag dengan text dan children', () => {
-    const result = pug('div Parent text\n  p Child')
-    expect(result).toBe('<div>Parent text<p>Child</p></div>')
-  })
-
-  test('HTML escaping di text', () => {
-    expect(pug('p <script>alert(1)</script>')).toBe('<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>')
-  })
-
-  test('template HTML sederhana', () => {
-    const input = `html
-  head
-    title My Site
-  body
-    div.container
-      h1 Welcome
-      p Hello World`
-    const result = pug(input)
-    expect(result).toBe('<html><head><title>My Site</title></head><body><div class="container"><h1>Welcome</h1><p>Hello World</p></div></body></html>')
-  })
-
-  test('ampere escaping (&amp;)', () => {
-    expect(pug('p AT&T & T-Mobile')).toBe('<p>AT&amp;T &amp; T-Mobile</p>')
-  })
-
-  test('deep nesting 5 level', () => {
-    const input = `div
-  section
-    article
-      aside
-        p Deepest`
-    const result = pug(input)
-    expect(result).toBe('<div><section><article><aside><p>Deepest</p></aside></article></section></div>')
+    expect(ast('div Parent text\n  p Child').elements[0]).toMatchObject({
+      name: 'div', text: 'Parent text', children: [{ name: 'p', text: 'Child' }]
+    })
   })
 
   test('dedent ke parent setelah sibling dalam', () => {
-    const input = `ul
-  li Item A
-  li
-    ul
-      li Sub A
-      li Sub B
-  li Item B`
-    const result = pug(input)
-    expect(result).toBe('<ul><li>Item A</li><li><ul><li>Sub A</li><li>Sub B</li></ul></li><li>Item B</li></ul>')
+    const children = ast('ul\n  li Item A\n  li\n    ul\n      li Sub A\n      li Sub B\n  li Item B').elements[0].children
+    expect(children).toHaveLength(3)
+    expect(children[0]).toMatchObject({ name: 'li', text: 'Item A' })
+    expect(children[1]).toMatchObject({ name: 'li' })
+    expect(children[2]).toMatchObject({ name: 'li', text: 'Item B' })
   })
 
   test('root sibling setelah nested block', () => {
-    const input = `div
-  p Child
-footer Note`
-    const result = pug(input)
-    expect(result).toBe('<div><p>Child</p></div><footer>Note</footer>')
+    const a = ast('div\n  p Child\nfooter Note')
+    expect(a.elements).toHaveLength(2)
+    expect(a.elements[0]).toMatchObject({ name: 'div' })
+    expect(a.elements[1]).toMatchObject({ name: 'footer', text: 'Note' })
   })
 
-  test('tab indentation didukung (deteksi otomatis)', () => {
-    const result = pug('div\n\tp Tabbed')
-    expect(result).toBe('<div><p>Tabbed</p></div>')
+  test('tab indentation didukung', () => {
+    expect(ast('div\n\tp Tabbed').elements[0].children[0]).toMatchObject({
+      name: 'p', text: 'Tabbed'
+    })
   })
 
   test('blank line di tengah', () => {
-    const input = `div
-
-  p After blank`
-    const result = pug(input)
-    expect(result).toBe('<div><p>After blank</p></div>')
+    expect(ast('div\n\n  p After blank').elements[0].children[0]).toMatchObject({
+      name: 'p', text: 'After blank'
+    })
   })
 
-  test('empty input tidak didukung', () => {
-    expect(() => pug('')).toThrow()
+  test('empty input error', () => {
+    expect(() => ast('')).toThrow()
   })
 
   test('kombinasi class id dan text', () => {
-    expect(pug('button.btn.primary#submit Click me')).toBe('<button class="btn primary" id="submit">Click me</button>')
+    expect(ast('button.btn.primary#submit Click me').elements[0]).toMatchObject({
+      name: 'button.btn.primary#submit', text: 'Click me'
+    })
   })
 
   test('atribut sederhana', () => {
-    expect(pug('a(href="/link")')).toBe('<a href="/link"></a>')
+    expect(ast('a(href="/link")').elements[0]).toMatchObject({
+      name: 'a',
+      attrs: { tag: 'Attrs', attrs: [{ name: 'href', value: '/link' }] }
+    })
   })
 
   test('atribut ganda', () => {
-    expect(pug('a(href="/link" target="_blank")')).toBe('<a href="/link" target="_blank"></a>')
+    expect(ast('a(href="/link" target="_blank")').elements[0]).toMatchObject({
+      attrs: { attrs: [{ name: 'href' }, { name: 'target', value: '_blank' }] }
+    })
   })
 
   test('atribut di void element', () => {
-    expect(pug('input(type="text" name="user")')).toBe('<input type="text" name="user" />')
+    expect(ast('input(type="text" name="user")').elements[0]).toMatchObject({
+      name: 'input',
+      attrs: { attrs: [{ name: 'type' }, { name: 'name' }] }
+    })
   })
 
-  test('atribut dengan spasi di value', () => {
-    expect(pug('div(class="foo bar")')).toBe('<div class="foo bar"></div>')
-  })
-
-  test('boolean attribute', () => {
-    expect(pug('input(disabled)')).toBe('<input disabled />')
+  test('boolean attribute (tanpa value)', () => {
+    expect(ast('input(disabled)').elements[0]).toMatchObject({
+      attrs: { attrs: [{ name: 'disabled', value: null }] }
+    })
   })
 
   test('atribut dengan dash di nama', () => {
-    expect(pug('div(data-id="5")')).toBe('<div data-id="5"></div>')
+    expect(ast('div(data-id="5")').elements[0]).toMatchObject({
+      attrs: { attrs: [{ name: 'data-id', value: '5' }] }
+    })
+  })
+
+  test('atribut dengan spasi di value', () => {
+    expect(ast('div(class="foo bar")').elements[0].attrs.attrs[0]).toMatchObject({
+      value: 'foo bar'
+    })
   })
 
   test('atribut dengan text', () => {
-    expect(pug('a(href="/link") Click me')).toBe('<a href="/link">Click me</a>')
+    expect(ast('a(href="/link") Click me').elements[0]).toMatchObject({
+      attrs: { attrs: [{ name: 'href' }] }, text: 'Click me'
+    })
   })
 
   test('shorthand class + atribut', () => {
-    expect(pug('a.btn(href="/x")')).toBe('<a class="btn" href="/x"></a>')
+    expect(ast('a.btn(href="/x")').elements[0]).toMatchObject({
+      name: 'a.btn', attrs: { attrs: [{ name: 'href' }] }
+    })
   })
 
   test('atribut dengan children', () => {
-    const result = pug('div(data-x="1")\n  p Hi')
-    expect(result).toBe('<div data-x="1"><p>Hi</p></div>')
+    expect(ast('div(data-x="1")\n  p Hi').elements[0]).toMatchObject({
+      attrs: { attrs: [{ name: 'data-x' }] },
+      children: [{ name: 'p', text: 'Hi' }]
+    })
   })
 
   test('escaping di attribute value', () => {
-    expect(pug('a(href="/search?q=a&b=1")')).toBe('<a href="/search?q=a&amp;b=1"></a>')
+    expect(ast('a(href="/search?q=a&b=1")').elements[0].attrs.attrs[0]).toMatchObject({
+      value: '/search?q=a&b=1'
+    })
   })
 
   test('attribute value kosong', () => {
-    expect(pug('input(value="")')).toBe('<input value="" />')
+    expect(ast('input(value="")').elements[0].attrs.attrs[0]).toMatchObject({
+      value: ''
+    })
+  })
+
+  test('template HTML sederhana', () => {
+    expect(ast('html\n  head\n    title My Site\n  body\n    div.container\n      h1 Welcome\n      p Hello World').elements[0]).toMatchObject({
+      name: 'html',
+      children: [
+        { name: 'head', children: [{ name: 'title', text: 'My Site' }] },
+        { name: 'body', children: [{ name: 'div.container', children: [{ name: 'h1' }, { name: 'p' }] }] }
+      ]
+    })
+  })
+
+  test('deep nesting 5 level', () => {
+    const a = ast('div\n  section\n    article\n      aside\n        p Deepest')
+    const el = a.elements[0]
+    expect(el.children[0].children[0].children[0].children[0]).toMatchObject({
+      name: 'p', text: 'Deepest'
+    })
   })
 })

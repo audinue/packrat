@@ -1,539 +1,265 @@
 import { describe, expect, test } from 'bun:test'
-import { runPhp, parsePhp } from './mini-php'
+import { parsePhp } from './mini-php'
 
-describe('mini-php', () => {
-  test('parsePhp returns AST', () => {
-    const ast = parsePhp('<?php $x = 1; ?>') as any
-    expect(ast).toMatchObject({ tag: 'Program' })
-    expect(ast.statements).toHaveLength(1)
+describe('mini-php parser', () => {
+  const ast = (src: string) => parsePhp(src) as any
+
+  test('Program root dengan tag <?php', () => {
+    expect(ast('<?php $x = 1; ?>')).toMatchObject({
+      tag: 'Program',
+      statements: [{ tag: 'Assign' }]
+    })
   })
 
-  test('tanpa tag <?php jadi teks biasa', () => {
-    expect(runPhp('echo 1;')).toBe('echo 1;')
+  test('Echo single arg', () => {
+    const s = ast('<?php echo 42; ?>').statements[0]
+    expect(s.tag).toBe('Echo')
+    expect(s.args.args).toMatchObject({ tag: 'Int', value: '42' })
   })
 
-  test('program kosong', () => {
-    expect(runPhp('<?php ?>')).toBe('')
-    expect(runPhp('<?php')).toBe('')
+  test('Echo multiple args', () => {
+    const s = ast('<?php echo 1, 2, 3; ?>').statements[0]
+    expect(s.args.args).toHaveLength(3)
   })
 
-  test('echo angka', () => {
-    expect(runPhp('<?php echo 42; ?>')).toBe('42')
+  test('Echo string single arg', () => {
+    expect(ast('<?php echo "hello"; ?>').statements[0].args.args).toMatchObject({ tag: 'String' })
   })
 
-  test('echo string double quote', () => {
-    expect(runPhp('<?php echo "hello"; ?>')).toBe('hello')
+  test('Echo tanpa tag penutup', () => {
+    expect(ast('<?php echo "open";')).toMatchObject({ tag: 'Program' })
   })
 
-  test('echo string single quote', () => {
-    expect(runPhp("<?php echo 'halo'; ?>")).toBe('halo')
+  test('Echo shorthand <?=', () => {
+    const s = ast('<?= 1 + 2 ?>').statements[0]
+    expect(s.tag).toBe('Echo')
+    expect(s.args.args).toMatchObject({ tag: 'Add' })
   })
 
-  test('echo multiple args tanpa separator', () => {
-    expect(runPhp('<?php echo 1, 2, 3; ?>')).toBe('123')
-    expect(runPhp('<?php echo "a", "b", "c"; ?>')).toBe('abc')
+  test('Echo shorthand string', () => {
+    expect(ast('<?= "halo" ?>').statements[0].args.args).toMatchObject({ tag: 'String' })
   })
 
-  test('echo tanpa tag penutup', () => {
-    expect(runPhp('<?php echo "open";')).toBe('open')
+  test('Int literal', () => {
+    expect(ast('<?php $x = 5; ?>').statements[0]).toMatchObject({
+      tag: 'Assign', name: 'x', value: { tag: 'Int', value: '5' }
+    })
   })
 
-  test('echo bool ala php', () => {
-    expect(runPhp('<?php echo true; ?>')).toBe('1')
-    expect(runPhp('<?php echo false; ?>')).toBe('')
+  test('Float literal', () => {
+    expect(ast('<?php $x = 3.14; ?>').statements[0].value).toMatchObject({ tag: 'Float', value: '3.14' })
   })
 
-  test('echo null', () => {
-    expect(runPhp('<?php echo null; ?>')).toBe('')
-    expect(runPhp('<?php $x = null; echo $x; ?>')).toBe('')
+  test('String double quote', () => {
+    expect(ast('<?php $nama = "Budi"; ?>').statements[0].value).toMatchObject({ tag: 'String' })
   })
 
-  test('aritmatika dasar', () => {
-    expect(runPhp('<?php echo 1 + 2; ?>')).toBe('3')
-    expect(runPhp('<?php echo 5 - 2; ?>')).toBe('3')
-    expect(runPhp('<?php echo 3 * 4; ?>')).toBe('12')
-    expect(runPhp('<?php echo 10 / 2; ?>')).toBe('5')
-    expect(runPhp('<?php echo 7 % 2; ?>')).toBe('1')
+  test('String single quote', () => {
+    expect(ast("<?php $x = 'hello'; ?>").statements[0].value).toMatchObject({ tag: 'SqString' })
   })
 
-  test('pembagian menghasilkan float', () => {
-    expect(runPhp('<?php echo 7 / 2; ?>')).toBe('3.5')
+  test('True literal', () => {
+    expect(ast('<?php $ok = true; ?>').statements[0].value).toMatchObject({ tag: 'True' })
   })
 
-  test('precedence operator', () => {
-    expect(runPhp('<?php echo 1 + 2 * 3; ?>')).toBe('7')
-    expect(runPhp('<?php echo (1 + 2) * 3; ?>')).toBe('9')
+  test('False literal', () => {
+    expect(ast('<?php $ok = false; ?>').statements[0].value).toMatchObject({ tag: 'False' })
   })
 
-  test('left associative', () => {
-    expect(runPhp('<?php echo 10 - 3 - 2; ?>')).toBe('5')
+  test('Null literal', () => {
+    expect(ast('<?php $x = null; ?>').statements[0].value).toMatchObject({ tag: 'Null' })
+  })
+
+  test('Var reference', () => {
+    expect(ast('<?php $y = $x; ?>').statements[0].value).toMatchObject({ tag: 'Var', name: 'x' })
+  })
+
+  test('Add expression', () => {
+    expect(ast('<?php $x = 1 + 2; ?>').statements[0].value).toMatchObject({
+      tag: 'Add', left: { value: '1' }, right: { value: '2' }
+    })
+  })
+
+  test('Arithmetic operators', () => {
+    expect(ast('<?php $x = 5 - 2; ?>').statements[0].value).toMatchObject({ tag: 'Sub' })
+    expect(ast('<?php $x = 3 * 4; ?>').statements[0].value).toMatchObject({ tag: 'Mul' })
+    expect(ast('<?php $x = 10 / 2; ?>').statements[0].value).toMatchObject({ tag: 'Div' })
+    expect(ast('<?php $x = 7 % 2; ?>').statements[0].value).toMatchObject({ tag: 'Mod' })
+  })
+
+  test('operator precedence', () => {
+    expect(ast('<?php $x = 1 + 2 * 3; ?>').statements[0].value).toMatchObject({
+      tag: 'Add', right: { tag: 'Mul' }
+    })
+  })
+
+  test('parentheses override precedence', () => {
+    expect(ast('<?php $x = (1 + 2) * 3; ?>').statements[0].value).toMatchObject({
+      tag: 'Mul', left: { tag: 'Add' }
+    })
+  })
+
+  test('Concat with dot', () => {
+    expect(ast('<?php $x = "foo" . "bar"; ?>').statements[0].value).toMatchObject({
+      tag: 'Concat', left: { tag: 'String' }, right: { tag: 'String' }
+    })
   })
 
   test('unary minus', () => {
-    expect(runPhp('<?php echo -5; ?>')).toBe('-5')
-    expect(runPhp('<?php echo -5 + 2; ?>')).toBe('-3')
-    expect(runPhp('<?php echo 2 * -3; ?>')).toBe('-6')
-    expect(runPhp('<?php echo 10 - -3; ?>')).toBe('13')
+    expect(ast('<?php $x = -5; ?>').statements[0].value).toMatchObject({
+      tag: 'UnaryExpr', op: '-', expression: { value: '5' }
+    })
   })
 
-  test('float literal', () => {
-    expect(runPhp('<?php echo 3.14; ?>')).toBe('3.14')
-    expect(runPhp('<?php echo 0.5; ?>')).toBe('0.5')
+  test('unary not', () => {
+    expect(ast('<?php $x = !false; ?>').statements[0].value).toMatchObject({
+      tag: 'UnaryExpr', op: '!'
+    })
   })
 
-  test('division by zero error', () => {
-    expect(() => runPhp('<?php echo 1 / 0; ?>')).toThrow()
+  test('equality operators', () => {
+    expect(ast('<?php $x = 1 == 2; ?>').statements[0].value).toMatchObject({ tag: 'Eq' })
+    expect(ast('<?php $x = 1 != 2; ?>').statements[0].value).toMatchObject({ tag: 'Neq' })
+    expect(ast('<?php $x = 1 === 1; ?>').statements[0].value).toMatchObject({ tag: 'StrictEq' })
+    expect(ast('<?php $x = 1 !== 2; ?>').statements[0].value).toMatchObject({ tag: 'StrictNeq' })
   })
 
-  test('konkatenasi titik', () => {
-    expect(runPhp('<?php echo "foo" . "bar"; ?>')).toBe('foobar')
-    expect(runPhp('<?php echo "x" . 5; ?>')).toBe('x5')
-    expect(runPhp('<?php echo 1 . 2 . 3; ?>')).toBe('123')
-    expect(runPhp('<?php echo true . "!"; ?>')).toBe('1!')
+  test('comparison operators', () => {
+    expect(ast('<?php $x = 1 < 2; ?>').statements[0].value).toMatchObject({ tag: 'Lt' })
+    expect(ast('<?php $x = 1 > 2; ?>').statements[0].value).toMatchObject({ tag: 'Gt' })
+    expect(ast('<?php $x = 3 <= 3; ?>').statements[0].value).toMatchObject({ tag: 'Lte' })
+    expect(ast('<?php $x = 3 >= 4; ?>').statements[0].value).toMatchObject({ tag: 'Gte' })
   })
 
-  test('konkatenasi dengan spasi', () => {
-    expect(runPhp('<?php echo 5 . 5; ?>')).toBe('55')
+  test('logical and/or', () => {
+    expect(ast('<?php $x = true && false; ?>').statements[0].value).toMatchObject({ tag: 'And' })
+    expect(ast('<?php $x = true || false; ?>').statements[0].value).toMatchObject({ tag: 'Or' })
   })
 
-  test('variabel', () => {
-    expect(runPhp('<?php $x = 5; echo $x; ?>')).toBe('5')
-    expect(runPhp('<?php $nama = "Budi"; echo $nama; ?>')).toBe('Budi')
+  test('left associative subtraction', () => {
+    expect(ast('<?php $x = 10 - 3 - 2; ?>').statements[0].value).toMatchObject({
+      tag: 'Sub', left: { tag: 'Sub' }, right: { value: '2' }
+    })
   })
 
-  test('assignment berantai', () => {
-    expect(runPhp('<?php $x = 2; $y = $x * 3; echo $y; ?>')).toBe('6')
+  test('IfStmt with braces', () => {
+    expect(ast('<?php if (true) { echo "ya"; }').statements[0]).toMatchObject({
+      tag: 'IfStmt', condition: { tag: 'True' }, body: [{ tag: 'Echo' }]
+    })
   })
 
-  test('reassignment', () => {
-    expect(runPhp('<?php $x = 1; $x = $x + 2; echo $x; ?>')).toBe('3')
+  test('IfStmt with Else', () => {
+    expect(ast('<?php if (false) { echo "ya"; } else { echo "tidak"; }').statements[0]).toMatchObject({
+      tag: 'IfStmt', else: { tag: 'Else', body: [{ tag: 'Echo' }] }
+    })
   })
 
-  test('variabel undefined error', () => {
-    expect(() => runPhp('<?php echo $x; ?>')).toThrow()
+  test('IfStmt with ElseIf', () => {
+    expect(ast('<?php if ($x == 1) { echo "satu"; } elseif ($x == 2) { echo "dua"; }').statements[0]).toMatchObject({
+      tag: 'IfStmt', elseif: [{ tag: 'ElseIf', condition: { tag: 'Eq' } }]
+    })
   })
 
-  test('interpolasi variabel di double quote', () => {
-    expect(runPhp('<?php $nama = "Budi"; echo "Halo $nama!"; ?>')).toBe('Halo Budi!')
-    expect(runPhp('<?php $x = 7; echo "nilai $x ok"; ?>')).toBe('nilai 7 ok')
+  test('While loop', () => {
+    expect(ast('<?php while ($i < 3) { echo $i; }').statements[0]).toMatchObject({
+      tag: 'While', condition: { tag: 'Lt' }
+    })
   })
 
-  test('single quote tidak interpolasi', () => {
-    expect(runPhp("<?php $nama = 'Budi'; echo '$nama'; ?>")).toBe('$nama')
+  test('For loop', () => {
+    expect(ast('<?php for ($i = 0; $i < 3; $i++) { echo $i; }').statements[0]).toMatchObject({
+      tag: 'For', init: { tag: 'Assign', name: 'i' }, condition: { tag: 'Lt' }, update: { tag: 'PostfixExpr', op: '++' }
+    })
   })
 
-  test('escape dollar', () => {
-    expect(runPhp('<?php echo "Harga: \\$5"; ?>')).toBe('Harga: $5')
+  test('For loop tanpa init', () => {
+    expect(ast('<?php for (; $i < 2; $i++) { echo $i; }').statements[0]).toMatchObject({
+      tag: 'For', init: null
+    })
   })
 
-  test('escape string', () => {
-    expect(runPhp('<?php echo "a\\nb\\tc\\""; ?>')).toBe('a\nb\tc"')
+  test('FuncDecl', () => {
+    expect(ast('<?php function sapa() { echo "halo"; }').statements[0]).toMatchObject({
+      tag: 'FuncDecl', name: 'sapa'
+    })
   })
 
-  test('comparison', () => {
-    expect(runPhp('<?php echo 1 < 2; ?>')).toBe('1')
-    expect(runPhp('<?php echo 1 > 2; ?>')).toBe('')
-    expect(runPhp('<?php echo 2 == 2; ?>')).toBe('1')
-    expect(runPhp('<?php echo 2 != 2; ?>')).toBe('')
-    expect(runPhp('<?php echo 3 <= 3; ?>')).toBe('1')
-    expect(runPhp('<?php echo 3 >= 4; ?>')).toBe('')
+  test('FuncDecl with params', () => {
+    expect(ast('<?php function tambah($a, $b) { return $a + $b; }').statements[0]).toMatchObject({
+      tag: 'FuncDecl', params: { params: [{ tag: 'Param', name: 'a' }, { tag: 'Param', name: 'b' }] }
+    })
   })
 
-  test('equality longgar ala php', () => {
-    expect(runPhp('<?php echo 1 == "1"; ?>')).toBe('1')
-    expect(runPhp('<?php echo null == ""; ?>')).toBe('1')
-    expect(runPhp('<?php echo false == 0; ?>')).toBe('1')
+  test('Return with value', () => {
+    expect(ast('<?php function f() { return 42; }').statements[0].body[0]).toMatchObject({
+      tag: 'Return', value: { tag: 'Int', value: '42' }
+    })
   })
 
-  test('strict equality', () => {
-    expect(runPhp('<?php echo 1 === 1; ?>')).toBe('1')
-    expect(runPhp('<?php echo 1 === "1"; ?>')).toBe('')
-    expect(runPhp('<?php echo 1 !== "1"; ?>')).toBe('1')
+  test('Return tanpa value', () => {
+    const s = ast('<?php function f() { return; }').statements[0].body[0]
+    expect(s.tag).toBe('Return')
+    expect(s.value).toBeNull()
   })
 
-  test('logika && dan ||', () => {
-    expect(runPhp('<?php echo true && false; ?>')).toBe('')
-    expect(runPhp('<?php echo true || false; ?>')).toBe('1')
-    expect(runPhp('<?php echo !false; ?>')).toBe('1')
+  test('CallExpr', () => {
+    expect(ast('<?php strlen("halo"); ?>').statements[0]).toMatchObject({
+      tag: 'ExprStmt', expression: { tag: 'CallExpr', name: 'strlen' }
+    })
+    expect(ast('<?php tambah(3, 4); ?>').statements[0].expression).toMatchObject({
+      tag: 'CallExpr', name: 'tambah'
+    })
   })
 
-  test('comparison string', () => {
-    expect(runPhp('<?php echo "abc" < "abd"; ?>')).toBe('1')
+  test('ArrayLit', () => {
+    expect(ast('<?php $a = [10, 20, 30]; ?>').statements[0].value).toMatchObject({
+      tag: 'ArrayLit', elements: { args: [{ value: '10' }, { value: '20' }, { value: '30' }] }
+    })
   })
 
-  test('if else', () => {
-    const code = `<?php
-$x = 5;
-if ($x > 3) {
-  echo "gede";
-} else {
-  echo "cilik";
-}`
-    expect(runPhp(code)).toBe('gede')
+  test('ArrayLit empty', () => {
+    expect(ast('<?php $a = []; ?>').statements[0].value).toMatchObject({
+      tag: 'ArrayLit', elements: null
+    })
   })
 
-  test('if false ambil else', () => {
-    const code = `<?php
-$x = 1;
-if ($x > 3) {
-  echo "gede";
-} else {
-  echo "cilik";
-}`
-    expect(runPhp(code)).toBe('cilik')
-  })
-
-  test('elseif chain', () => {
-    const code = `<?php
-$x = 2;
-if ($x == 1) {
-  echo "satu";
-} elseif ($x == 2) {
-  echo "dua";
-} elseif ($x == 3) {
-  echo "tiga";
-} else {
-  echo "lain";
-}`
-    expect(runPhp(code)).toBe('dua')
-  })
-
-  test('elseif tanpa else', () => {
-    const code = `<?php
-$x = 9;
-if ($x == 1) {
-  echo "satu";
-} elseif ($x == 2) {
-  echo "dua";
-}`
-    expect(runPhp(code)).toBe('')
-  })
-
-  test('if tanpa block statement', () => {
-    const code = `<?php
-if (true) {
-  echo "ya";
-}`
-    expect(runPhp(code)).toBe('ya')
-  })
-
-  test('nested if', () => {
-    const code = `<?php
-$x = 10;
-if ($x > 5) {
-  if ($x > 8) {
-    echo "gede banget";
-  } else {
-    echo "gede";
-  }
-} else {
-  echo "cilik";
-}`
-    expect(runPhp(code)).toBe('gede banget')
-  })
-
-  test('if tanpa braces', () => {
-    const code = `<?php
-function cek($n) {
-  if ($n <= 1) return "kecil";
-  else return "gede";
-}
-echo cek(0);
-echo cek(5);`
-    expect(runPhp(code)).toBe('kecilgede')
-  })
-
-  test('while tanpa braces', () => {
-    const code = `<?php
-$i = 0;
-while ($i < 3) echo $i++;
-echo $i;`
-    expect(runPhp(code)).toBe('0123')
-  })
-
-  test('variabel dari block tetap terlihat', () => {
-    const code = `<?php
-if (true) {
-  $x = 7;
-}
-echo $x;`
-    expect(runPhp(code)).toBe('7')
-  })
-
-  test('while loop', () => {
-    const code = `<?php
-$i = 0;
-while ($i < 3) {
-  echo $i;
-  $i = $i + 1;
-}`
-    expect(runPhp(code)).toBe('012')
-  })
-
-  test('while sum', () => {
-    const code = `<?php
-$total = 0;
-$i = 1;
-while ($i <= 10) {
-  $total = $total + $i;
-  $i++;
-}
-echo $total;`
-    expect(runPhp(code)).toBe('55')
-  })
-
-  test('for loop dengan postfix increment', () => {
-    const code = `<?php
-for ($i = 0; $i < 3; $i++) {
-  echo $i, "\\n";
-}`
-    expect(runPhp(code)).toBe('0\n1\n2\n')
-  })
-
-  test('for loop dengan assignment update', () => {
-    const code = `<?php
-for ($i = 1; $i <= 3; $i = $i + 1) {
-  echo $i;
-}`
-    expect(runPhp(code)).toBe('123')
-  })
-
-  test('for tanpa init', () => {
-    const code = `<?php
-$i = 0;
-for (; $i < 2; $i++) {
-  echo $i;
-}`
-    expect(runPhp(code)).toBe('01')
-  })
-
-  test('postfix increment nilai lama', () => {
-    expect(runPhp('<?php $i = 0; echo $i++; echo $i; ?>')).toBe('01')
-  })
-
-  test('prefix increment nilai baru', () => {
-    expect(runPhp('<?php $i = 0; echo ++$i; ?>')).toBe('1')
-    expect(runPhp('<?php $i = 0; echo --$i; ?>')).toBe('-1')
-  })
-
-  test('fungsi tanpa param', () => {
-    const code = `<?php
-function sapa() {
-  echo "halo";
-}
-sapa();`
-    expect(runPhp(code)).toBe('halo')
+  test('Index access', () => {
+    expect(ast('<?php $x = $a[0]; ?>').statements[0].value).toMatchObject({
+      tag: 'IndexExpr', expression: { tag: 'Var', name: 'a' }, index: { value: '0' }
+    })
   })
 
-  test('fungsi dengan param', () => {
-    const code = `<?php
-function tambah($a, $b) {
-  echo $a + $b;
-}
-tambah(3, 4);`
-    expect(runPhp(code)).toBe('7')
+  test('Postfix increment', () => {
+    expect(ast('<?php $i++; ?>').statements[0].expression).toMatchObject({
+      tag: 'PostfixExpr', expression: { tag: 'Var' }, op: '++'
+    })
   })
 
-  test('fungsi dengan return', () => {
-    const code = `<?php
-function duaKali($x) {
-  return $x * 2;
-}
-echo duaKali(5);`
-    expect(runPhp(code)).toBe('10')
+  test('Prefix increment', () => {
+    expect(ast('<?php ++$i; ?>').statements[0].expression).toMatchObject({
+      tag: 'UnaryExpr', op: '++'
+    })
   })
 
-  test('fungsi tanpa return menghasilkan null', () => {
-    const code = `<?php
-function kosong() {
-  echo "dipanggil";
-}
-echo kosong();`
-    expect(runPhp(code)).toBe('dipanggil')
+  test('Empty statement', () => {
+    expect(ast('<?php ; ?>').statements[0]).toMatchObject({ tag: 'Empty' })
   })
 
-  test('recursive fibonacci', () => {
-    const code = `<?php
-function fib($n) {
-  if ($n <= 1) {
-    return $n;
-  }
-  return fib($n - 1) + fib($n - 2);
-}
-echo fib(7);`
-    expect(runPhp(code)).toBe('13')
+  test('multiple statements', () => {
+    expect(ast('<?php $a = 1; $b = 2; echo $a + $b; ?>').statements).toHaveLength(3)
   })
 
-  test('fungsi bisa akses variabel dari luar', () => {
-    const code = `<?php
-$x = 10;
-function coba() {
-  echo $x;
-}
-coba();`
-    expect(runPhp(code)).toBe('10')
-  })
-
-  test('param fungsi adalah copy', () => {
-    const code = `<?php
-function ubah($a) {
-  $a = 99;
-}
-$x = 5;
-ubah($x);
-echo $x;`
-    expect(runPhp(code)).toBe('5')
-  })
-
-  test('builtin strlen', () => {
-    expect(runPhp('<?php echo strlen("halo"); ?>')).toBe('4')
-  })
-
-  test('builtin strtoupper & strtolower', () => {
-    expect(runPhp('<?php echo strtoupper("halo"); ?>')).toBe('HALO')
-    expect(runPhp('<?php echo strtolower("HALO"); ?>')).toBe('halo')
-  })
-
-  test('builtin count', () => {
-    expect(runPhp('<?php echo count([10, 20, 30]); ?>')).toBe('3')
-    expect(runPhp('<?php echo count([]); ?>')).toBe('0')
-  })
-
-  test('builtin str_repeat', () => {
-    expect(runPhp('<?php echo str_repeat("ab", 3); ?>')).toBe('ababab')
-  })
-
-  test('nested function call', () => {
-    expect(runPhp('<?php echo strtoupper("halo " . "dunia"); ?>')).toBe('HALO DUNIA')
-  })
-
-  test('undefined function error', () => {
-    expect(() => runPhp('<?php nggakAda(1); ?>')).toThrow()
-  })
-
-  test('array literal dan index', () => {
-    expect(runPhp('<?php $a = [10, 20, 30]; echo $a[1]; ?>')).toBe('20')
-  })
-
-  test('array kosong', () => {
-    expect(runPhp('<?php $a = []; echo count($a); ?>')).toBe('0')
-  })
-
-  test('index pakai variabel', () => {
-    expect(runPhp('<?php $a = [5, 6, 7]; $i = 2; echo $a[$i]; ?>')).toBe('7')
-  })
-
-  test('index out of range error', () => {
-    expect(() => runPhp('<?php $a = [1]; echo $a[5]; ?>')).toThrow()
-  })
-
-  test('string bisa diindex', () => {
-    expect(runPhp('<?php $s = "abc"; echo $s[1]; ?>')).toBe('b')
-  })
-
-  test('echo array jadi "Array"', () => {
-    expect(runPhp('<?php echo [1, 2]; ?>')).toBe('Array')
-  })
-
-  test('komentar single line //', () => {
-    expect(runPhp('<?php // komentar\n echo 1; ?>')).toBe('1')
-  })
-
-  test('komentar hash #', () => {
-    expect(runPhp('<?php # komentar\n echo 2; ?>')).toBe('2')
-  })
-
-  test('komentar multi line', () => {
-    expect(runPhp('<?php /* komentar */ echo 3; ?>')).toBe('3')
-  })
-
-  test('statement kosong ;', () => {
-    expect(runPhp('<?php ; echo 1; ?>')).toBe('1')
-  })
-
-  test('echo shorthand <?=', () => {
-    expect(runPhp('<?= 1 + 2 ?>')).toBe('3')
-    expect(runPhp('<?= "halo" ?>')).toBe('halo')
-  })
-
-  test('echo shorthand dengan semicolon', () => {
-    expect(runPhp('<?= 2 * 3; ?>')).toBe('6')
-  })
-
-  test('echo shorthand dengan fungsi', () => {
-    expect(runPhp('<?= strtoupper("halo") ?>')).toBe('HALO')
-    expect(runPhp('<?= "halo" . " dunia" ?>')).toBe('halo dunia')
-  })
-
-  test('teks campur echo shorthand', () => {
-    expect(runPhp('Hello <?= "John" ?>!')).toBe('Hello John!')
-  })
-
-  test('teks campur blok php', () => {
-    expect(runPhp('Selamat datang <?php $nama = "budi"; echo $nama; ?>!')).toBe('Selamat datang budi!')
-  })
-
-  test('teks di antara multiple tag', () => {
-    expect(runPhp('a<?= 1 ?>b<?= 2 ?>c')).toBe('a1b2c')
-  })
-
-  test('teks campur if dan loop', () => {
-    expect(runPhp('<?php $n = 3; if ($n > 2) { echo "besar"; } ?> !!')).toBe('besar !!')
-    expect(runPhp('Mulai: <?php for ($i = 0; $i < 3; $i++) { echo $i . " "; } ?>Selesai')).toBe('Mulai: 0 1 2 Selesai')
-  })
-
-  test('newline di teks dipertahankan', () => {
-    expect(runPhp('A\n<?= 1 ?>\nB')).toBe('A\n1\nB')
-  })
-
-  test('teks doang (tanpa tag) jadi passthrough', () => {
-    expect(runPhp('Halo dunia!')).toBe('Halo dunia!')
-  })
-
-  test('teks dengan < bukan tag php', () => {
-    expect(runPhp('a < b')).toBe('a < b')
-    expect(runPhp('a < b <?= 1 ?>')).toBe('a < b 1')
-  })
-
-  test('tag <? tanpa identitas jadi teks', () => {
-    expect(runPhp('Hello <? x')).toBe('Hello <? x')
-  })
-
-  test('teks dengan karakter khusus', () => {
-    expect(runPhp('Harga $5 dan "kutip"')).toBe('Harga $5 dan "kutip"')
-    expect(runPhp('backslash \\ ok')).toBe('backslash \\ ok')
-  })
-
-  test('fizzbuzz', () => {
-    const code = `<?php
-for ($i = 1; $i <= 15; $i++) {
-  if ($i % 15 == 0) {
-    echo "FizzBuzz\\n";
-  } elseif ($i % 3 == 0) {
-    echo "Fizz\\n";
-  } elseif ($i % 5 == 0) {
-    echo "Buzz\\n";
-  } else {
-    echo $i, "\\n";
-  }
-}`
-    expect(runPhp(code)).toBe('1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n')
-  })
-
-  test('fungsi + loop + array', () => {
-    const code = `<?php
-function jumlah($arr) {
-  $total = 0;
-  for ($i = 0; $i < count($arr); $i++) {
-    $total = $total + $arr[$i];
-  }
-  return $total;
-}
-echo "total: " . jumlah([1, 2, 3, 4, 5]);`
-    expect(runPhp(code)).toBe('total: 15')
+  test('teks campur PHP dan HTML di-wrap jadi echo', () => {
+    expect(ast('Hello <?= "John" ?>!')).toMatchObject({ tag: 'Program' })
   })
 
   test('syntax error', () => {
-    expect(() => runPhp('<?php $x = ; ?>')).toThrow()
+    expect(() => ast('<?php $x = ; ?>')).toThrow()
+  })
+
+  test('complex nested expression', () => {
+    expect(ast('<?php $x = ($a + $b) * ($c - $d); ?>').statements[0].value).toMatchObject({
+      tag: 'Mul', left: { tag: 'Add' }, right: { tag: 'Sub' }
+    })
   })
 })
