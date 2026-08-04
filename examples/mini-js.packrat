@@ -16,7 +16,7 @@ Param = "..." name:Id -> RestParam / name:Id -> Param
 Expression = OrExpr
 OrExpr = left:OrExpr _ "||" _ right:AndExpr -> Or / AndExpr
 AndExpr = left:AndExpr _ "&&" _ right:EqExpr -> And / EqExpr
-EqExpr = left:EqExpr _ "===" _ right:RelExpr -> StrictEq / left:EqExpr _ "!==" _ right:RelExpr -> StrictNeq / left:EqExpr _ "==" _ right:RelExpr -> Eq / left:EqExpr _ "!=" _ right:RelExpr -> Neq / left:EqExpr _ "<=" _ right:RelExpr -> Lte / left:EqExpr _ ">=" _ right:RelExpr -> Gte / left:EqExpr _ "<" _ right:RelExpr -> Lt / left:EqExpr _ ">" _ right:RelExpr -> Gt / RelExpr
+EqExpr = left:EqExpr _ "===" _ right:RelExpr -> StrictEq / left:EqExpr _ "!==" _ right:RelExpr -> StrictNeq / left:EqExpr _ "==" _ right:RelExpr -> Eq / left:EqExpr _ "!=" _ right:RelExpr -> Neq / RelExpr
 RelExpr = left:RelExpr _ "<" _ right:AddExpr -> Lt / left:RelExpr _ ">" _ right:AddExpr -> Gt / left:RelExpr _ "<=" _ right:AddExpr -> Lte / left:RelExpr _ ">=" _ right:AddExpr -> Gte / AddExpr
 AddExpr = left:AddExpr _ "+" _ right:MulExpr -> Add / left:AddExpr _ "-" _ right:MulExpr -> Sub / MulExpr
 MulExpr = left:MulExpr _ "*" _ right:UnaryExpr -> Mul / left:MulExpr _ "/" _ right:UnaryExpr -> Div / left:MulExpr _ "%" _ right:UnaryExpr -> Mod / UnaryExpr
