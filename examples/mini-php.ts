@@ -247,13 +247,11 @@ function evalExpr (node: Ok, env: Env, output: Output): Value {
         default: throw new RuntimeError(`unknown unary operator: ${op}`)
       }
     }
-    case 'OrExpr': case 'AndExpr': case 'Comparison': case 'Concat': case 'Additive': case 'Multiplicative': {
-      let result = evalExpr(field<Ok>(node, 'head'), env, output)
-      const tail = (field<Ok | null>(node, 'tail') ?? []) as Ok[]
-      for (const binary of tail) {
-        result = evalBinary(field<string>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env, output))
-      }
-      return result
+    case 'OrBin': case 'AndBin': case 'CompBin': case 'ConcatBin': case 'AddBin': case 'MulBin': {
+      const left = evalExpr(field<Ok>(node, 'left'), env, output)
+      const op = field<string>(node, 'op')
+      const right = evalExpr(field<Ok>(node, 'right'), env, output)
+      return evalBinary(op, left, right)
     }
     case 'CallExpr': {
       const name = field<string>(node, 'name')

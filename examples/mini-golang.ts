@@ -149,13 +149,11 @@ function evalExpr (node: Ok, env: Env, output: string[]): Value {
     }
     case 'Ident':
       return env.get(field<string>(node, 'name'))
-    case 'OrExpr': case 'AndExpr': case 'EqExpr': case 'RelExpr': case 'AddExpr': case 'MulExpr': {
-      let result = evalExpr(field<Ok>(node, 'head'), env, output)
-      const tail = (field<Ok | null>(node, 'tail') ?? []) as Ok[]
-      for (const binary of tail) {
-        result = evalBinary(field<Ok>(binary, 'op'), result, evalExpr(field<Ok>(binary, 'term'), env, output))
-      }
-      return result
+    case 'OrBin': case 'AndBin': case 'EqBin': case 'RelBin': case 'AddBin': case 'MulBin': {
+      const left = evalExpr(field<Ok>(node, 'left'), env, output)
+      const op = field<Ok>(node, 'op')
+      const right = evalExpr(field<Ok>(node, 'right'), env, output)
+      return evalBinary(op, left, right)
     }
     case 'UnaryExpr': {
       const op = field<Ok>(node, 'op')

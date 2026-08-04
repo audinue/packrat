@@ -8,9 +8,9 @@ Else = Newlines _ "else" _ ":" _ block:Block -> Else
 While = "while" __ expression:Expression _ ":" _ block:Block -> While
 Block = statements:>> Statement <<+ -> Block
 Expression = Comparison
-Comparison = head:Additive tail:(_ op:CompareOp _ term:Additive -> Binary)* -> Comparison
-Additive = head:Multiplicative tail:(_ op:AdditiveOp _ term:Multiplicative -> Binary)* -> Additive
-Multiplicative = head:Unary tail:(_ op:MultOp _ term:Unary -> Binary)* -> Multiplicative
+Comparison = left:Comparison _ op:CompareOp _ right:Additive -> CompBin / Additive
+Additive = left:Additive _ op:AdditiveOp _ right:Multiplicative -> AddBin / Multiplicative
+Multiplicative = left:Multiplicative _ op:MultOp _ right:Unary -> MulBin / Unary
 Unary = "-" _ expression:Unary -> Negate / Primary
 Primary = Number / String / True / False / Id / "(" _ ^Expression _ ")"
 CompareOp = "==" / "!=" / "<=" / ">=" / "<" / ">"

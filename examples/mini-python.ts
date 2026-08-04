@@ -55,13 +55,11 @@ const evalExpr = (node: unknown, scope: Scope): unknown => {
     }
     case 'Negate':
       return -(evalExpr(node.expression, scope) as number)
-    case 'Comparison': case 'Additive': case 'Multiplicative': {
-      let result = evalExpr(node.head, scope)
-      for (const binary of ((node.tail as unknown[] | null) ?? [])) {
-        const item = binary as { op: string, term: unknown }
-        result = evalBinary(item.op, result, evalExpr(item.term, scope))
-      }
-      return result
+    case 'CompBin': case 'AddBin': case 'MulBin': {
+      const left = evalExpr(node.left!, scope)
+      const op = node.op as string
+      const right = evalExpr(node.right!, scope)
+      return evalBinary(op, left, right)
     }
     default:
       throw new Error(`Unknown expression: ${node.tag}`)
