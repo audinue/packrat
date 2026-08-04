@@ -228,9 +228,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     const rule = rules[name]!
     if (!rule.isLeftRecursive) {
       const result = evaluateExpression(rule.expression)
-      if (result !== err) {
-        memo[key] = { offset, indent: indent.slice(), indentSize, result, growing: false }
-      }
+      memo[key] = { offset, indent: indent.slice(), indentSize, result, growing: false }
       return result
     }
     const frame = { key, name, involved: null }
@@ -774,7 +772,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
               if (next === 0) {
                 ${expression.result} = err
               } else {
-        if (indentSize === undefined) {
+                if (indentSize === undefined) {
                   indentSize = next
                 }
                 if (next % indentSize !== 0) {
@@ -882,9 +880,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
           }
           let ${results}
           ${emitExpression(rule.expression)}
-          if (${rule.expression.result} !== err) {
-            cache.${rule.name}[key] = { offset, indent: indent.slice(), indentSize, result: ${rule.expression.result} }
-          }
+          cache.${rule.name}[key] = { offset, indent: indent.slice(), indentSize, result: ${rule.expression.result} }
           return ${rule.expression.result}
         }
       `
@@ -1326,9 +1322,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
             return $entry['result'];
           }
           ${emitExpression(rule.expression)}
-          if ($${rule.expression.result} !== $this->err) {
-            $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $${rule.expression.result}];
-          }
+          $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $${rule.expression.result}];
           return $${rule.expression.result};
         }
       `
