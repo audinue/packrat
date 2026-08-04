@@ -1,0 +1,5589 @@
+[
+  {
+    "name": "Literal",
+    "grammar": "Any = .",
+    "tests": [
+      {
+        "name": "Literal #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Literal #2",
+        "input": "0",
+        "expected": "0"
+      },
+      {
+        "name": "Literal #3",
+        "input": "",
+        "expected": "err"
+      },
+      {
+        "name": "Literal #4",
+        "input": "aa",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Literal (2)",
+    "grammar": "Literal = \"abc\"",
+    "tests": [
+      {
+        "name": "Literal #1 (2)",
+        "input": "abc",
+        "expected": "abc"
+      },
+      {
+        "name": "Literal #2 (2)",
+        "input": "abd",
+        "expected": "err"
+      },
+      {
+        "name": "Literal #3 (2)",
+        "input": "",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Literal insensitive",
+    "grammar": "Literal = \"abc\"i",
+    "tests": [
+      {
+        "name": "Literal insensitive #1",
+        "input": "abc",
+        "expected": "abc"
+      },
+      {
+        "name": "Literal insensitive #2",
+        "input": "ABC",
+        "expected": "ABC"
+      },
+      {
+        "name": "Literal insensitive #3",
+        "input": "AbC",
+        "expected": "AbC"
+      },
+      {
+        "name": "Literal insensitive #4",
+        "input": "abd",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Class",
+    "grammar": "Class = [a-z]",
+    "tests": [
+      {
+        "name": "Class #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Class #2",
+        "input": "z",
+        "expected": "z"
+      },
+      {
+        "name": "Class #3",
+        "input": "A",
+        "expected": "err"
+      },
+      {
+        "name": "Class #4",
+        "input": "0",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Class negation",
+    "grammar": "Class = [^a-z]",
+    "tests": [
+      {
+        "name": "Class negation #1",
+        "input": "A",
+        "expected": "A"
+      },
+      {
+        "name": "Class negation #2",
+        "input": "0",
+        "expected": "0"
+      },
+      {
+        "name": "Class negation #3",
+        "input": "a",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Class equal predicate",
+    "grammar": "Class = [ab_]",
+    "tests": [
+      {
+        "name": "Class equal predicate #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Class equal predicate #2",
+        "input": "b",
+        "expected": "b"
+      },
+      {
+        "name": "Class equal predicate #3",
+        "input": "_",
+        "expected": "_"
+      },
+      {
+        "name": "Class equal predicate #4",
+        "input": "c",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Class insensitive",
+    "grammar": "Class = [a-z]i",
+    "tests": [
+      {
+        "name": "Class insensitive #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Class insensitive #2",
+        "input": "A",
+        "expected": "A"
+      },
+      {
+        "name": "Class insensitive #3",
+        "input": "0",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Reference",
+    "grammar": "A = B\n      B = \"x\"",
+    "tests": [
+      {
+        "name": "Reference #1",
+        "input": "x",
+        "expected": "x"
+      },
+      {
+        "name": "Reference #2",
+        "input": "y",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Choice",
+    "grammar": "Choice = \"a\" / \"b\"",
+    "tests": [
+      {
+        "name": "Choice #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Choice #2",
+        "input": "b",
+        "expected": "b"
+      },
+      {
+        "name": "Choice #3",
+        "input": "c",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Sequence",
+    "grammar": "Sequence = \"a\" \"b\"",
+    "tests": [
+      {
+        "name": "Sequence #1",
+        "input": "ab",
+        "expected": [
+          "a",
+          "b"
+        ]
+      },
+      {
+        "name": "Sequence #2",
+        "input": "a",
+        "expected": "err"
+      },
+      {
+        "name": "Sequence #3",
+        "input": "ba",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Node",
+    "grammar": "Node = a:\"a\" b:\"b\" -> Node",
+    "tests": [
+      {
+        "name": "Node",
+        "input": "ab",
+        "expected": {
+          "tag": "Node",
+          "a": "a",
+          "b": "b",
+          "location": {
+            "file": "<unknown>",
+            "line": 1,
+            "column": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "Field",
+    "grammar": "Field = value:\"a\" -> Field",
+    "tests": [
+      {
+        "name": "Field",
+        "input": "a",
+        "expected": {
+          "tag": "Field",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Extract single",
+    "grammar": "Extract = \"(\" ^\"a\" \")\"",
+    "tests": [
+      {
+        "name": "Extract single",
+        "input": "(a)",
+        "expected": "a"
+      }
+    ]
+  },
+  {
+    "name": "Extract multiple",
+    "grammar": "Extract = ^\"a\" \"b\" ^\"c\"",
+    "tests": [
+      {
+        "name": "Extract multiple",
+        "input": "abc",
+        "expected": [
+          "a",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Text",
+    "grammar": "Text = $( \"a\" \"b\" \"c\" )",
+    "tests": [
+      {
+        "name": "Text",
+        "input": "abc",
+        "expected": "abc"
+      }
+    ]
+  },
+  {
+    "name": "Except",
+    "grammar": "Except = ~\"a\"",
+    "tests": [
+      {
+        "name": "Except #1",
+        "input": "b",
+        "expected": "b"
+      },
+      {
+        "name": "Except #2",
+        "input": "a",
+        "expected": "err"
+      },
+      {
+        "name": "Except #3",
+        "input": "",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "And",
+    "grammar": "And = &\"a\" \"a\"",
+    "tests": [
+      {
+        "name": "And #1",
+        "input": "a",
+        "expected": [
+          null,
+          "a"
+        ]
+      },
+      {
+        "name": "And #2",
+        "input": "b",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Not",
+    "grammar": "Not = !\"a\" .",
+    "tests": [
+      {
+        "name": "Not #1",
+        "input": "b",
+        "expected": [
+          null,
+          "b"
+        ]
+      },
+      {
+        "name": "Not #2",
+        "input": "a",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Optional",
+    "grammar": "Optional = \"a\"?",
+    "tests": [
+      {
+        "name": "Optional #1",
+        "input": "a",
+        "expected": "a"
+      },
+      {
+        "name": "Optional #2",
+        "input": "",
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "Zero",
+    "grammar": "Zero = \"a\"*",
+    "tests": [
+      {
+        "name": "Zero #1",
+        "input": "",
+        "expected": []
+      },
+      {
+        "name": "Zero #2",
+        "input": "aaa",
+        "expected": [
+          "a",
+          "a",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "One",
+    "grammar": "One = \"a\"+",
+    "tests": [
+      {
+        "name": "One #1",
+        "input": "a",
+        "expected": [
+          "a"
+        ]
+      },
+      {
+        "name": "One #2",
+        "input": "aaa",
+        "expected": [
+          "a",
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "One #3",
+        "input": "",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Repeat min max",
+    "grammar": "Repeat = \"a\"{2,3}",
+    "tests": [
+      {
+        "name": "Repeat min max #1",
+        "input": "aa",
+        "expected": [
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat min max #2",
+        "input": "aaa",
+        "expected": [
+          "a",
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat min max #3",
+        "input": "a",
+        "expected": "err"
+      },
+      {
+        "name": "Repeat min max #4",
+        "input": "aaaa",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Repeat min only",
+    "grammar": "Repeat = \"a\"{2}",
+    "tests": [
+      {
+        "name": "Repeat min only #1",
+        "input": "aa",
+        "expected": [
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat min only #2",
+        "input": "aaa",
+        "expected": [
+          "a",
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat min only #3",
+        "input": "a",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Repeat separator",
+    "grammar": "Repeat = \"a\"{2,3;\",\"}",
+    "tests": [
+      {
+        "name": "Repeat separator #1",
+        "input": "a,a",
+        "expected": [
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat separator #2",
+        "input": "a,a,a",
+        "expected": [
+          "a",
+          "a",
+          "a"
+        ]
+      },
+      {
+        "name": "Repeat separator #3",
+        "input": "a",
+        "expected": "err"
+      },
+      {
+        "name": "Repeat separator #4",
+        "input": "aa",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Indent",
+    "grammar": "Indent = >> \"a\" << -> Indent",
+    "tests": [
+      {
+        "name": "Indent #1",
+        "input": "\n  a",
+        "expected": {
+          "tag": "Indent"
+        }
+      },
+      {
+        "name": "Indent #2",
+        "input": "a",
+        "expected": "err"
+      },
+      {
+        "name": "Indent #3",
+        "input": "\na",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Indent nested deeper",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent nested deeper",
+        "input": "a\n  b",
+        "expected": {
+          "tag": "Outer",
+          "inner": "b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent nested same or lower fails",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent nested same or lower fails",
+        "input": "a\nb",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Indent auto detect 2 spaces",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent auto detect 2 spaces",
+        "input": "a\n  b",
+        "expected": {
+          "tag": "Outer",
+          "inner": "b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent auto detect 4 spaces",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent auto detect 4 spaces",
+        "input": "a\n    b",
+        "expected": {
+          "tag": "Outer",
+          "inner": "b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent auto detect tab",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent auto detect tab",
+        "input": "a\n\tb",
+        "expected": {
+          "tag": "Outer",
+          "inner": "b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent nested 2 levels with 2 spaces unit",
+    "grammar": "Block = \"a\" >> \"b\" >> \"c\" << << -> Block",
+    "tests": [
+      {
+        "name": "Indent nested 2 levels with 2 spaces unit",
+        "input": "a\n  b\n    c",
+        "expected": {
+          "tag": "Block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent nested 2 levels with 4 spaces unit",
+    "grammar": "Block = \"a\" >> \"b\" >> \"c\" << << -> Block",
+    "tests": [
+      {
+        "name": "Indent nested 2 levels with 4 spaces unit",
+        "input": "a\n    b\n        c",
+        "expected": {
+          "tag": "Block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent nested 2 levels with tab unit",
+    "grammar": "Block = \"a\" >> \"b\" >> \"c\" << << -> Block",
+    "tests": [
+      {
+        "name": "Indent nested 2 levels with tab unit",
+        "input": "a\n\tb\n\t\tc",
+        "expected": {
+          "tag": "Block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent fails on non multiple",
+    "grammar": "Block = \"a\" >> \"b\" >> \"c\" << << -> Block",
+    "tests": [
+      {
+        "name": "Indent fails on non multiple #1",
+        "input": "a\n  b\n     c",
+        "expected": "err"
+      },
+      {
+        "name": "Indent fails on non multiple #2",
+        "input": "a\n  b\n    c",
+        "expected": {
+          "tag": "Block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Indent with blank lines",
+    "grammar": "Outer = \"a\" inner:>> \"b\" << -> Outer",
+    "tests": [
+      {
+        "name": "Indent with blank lines",
+        "input": "a\n\n  b",
+        "expected": {
+          "tag": "Outer",
+          "inner": "b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "left-associative binary op — 2 operand",
+    "grammar": "E = left:E \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "left-associative binary op — 2 operand",
+        "input": "9-3",
+        "expected": {
+          "tag": "Minus",
+          "left": {
+            "tag": "Digit",
+            "value": "9"
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "3"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "left-associative binary op — chained 3 operand, harus nest ke kiri",
+    "grammar": "E = left:E \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "left-associative binary op — chained 3 operand, harus nest ke kiri",
+        "input": "9-3-1",
+        "expected": {
+          "tag": "Minus",
+          "left": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Digit",
+              "value": "9"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "3"
+            }
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "1"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "left-associative binary op — chained 4 operand, mastiin gak ada regresi di growing loop yang lebih dalem",
+    "grammar": "E = left:E \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "left-associative binary op — chained 4 operand, mastiin gak ada regresi di growing loop yang lebih dalem",
+        "input": "9-3-1-2",
+        "expected": {
+          "tag": "Minus",
+          "left": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Minus",
+              "left": {
+                "tag": "Digit",
+                "value": "9"
+              },
+              "right": {
+                "tag": "Digit",
+                "value": "3"
+              }
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "1"
+            }
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "2"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "base case doang (gak ada operator) -> gak boleh ke-wrap Minus",
+    "grammar": "E = left:E \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "base case doang (gak ada operator) -> gak boleh ke-wrap Minus",
+        "input": "9",
+        "expected": {
+          "tag": "Digit",
+          "value": "9"
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "left recursion + grouping (Primary -> Group) -> parenthesized nested expr",
+    "grammar": "E = left:E \"+\" right:D -> Plus / D\n      D = value:$[0-9]+ -> Digit / \"(\" ^E \")\"",
+    "tests": [
+      {
+        "name": "left recursion + grouping (Primary -> Group) -> parenthesized nested expr",
+        "input": "(1+2)+3",
+        "expected": {
+          "tag": "Plus",
+          "left": {
+            "tag": "Plus",
+            "left": {
+              "tag": "Digit",
+              "value": "1"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "2"
+            }
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "3"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "left recursion gagal total -> throw",
+    "grammar": "E = left:E \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "left recursion gagal total -> throw",
+        "input": "abc",
+        "expected": "err",
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "2-rule mutual cycle (L <-> P), dari contoh l-value klasik Medeiros et al.",
+    "grammar": "L = target:P \".\" \"x\" -> Access / \"x\" -> Var\n      P = target:P \"(\" \"n\" \")\" -> Call / L",
+    "tests": [
+      {
+        "name": "2-rule mutual cycle (L <-> P), dari contoh l-value klasik Medeiros et al.",
+        "input": "x(n)(n).x(n).x",
+        "expected": {
+          "tag": "Access",
+          "target": {
+            "tag": "Call",
+            "target": {
+              "tag": "Access",
+              "target": {
+                "tag": "Call",
+                "target": {
+                  "tag": "Call",
+                  "target": {
+                    "tag": "Var"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "startRule": "L"
+      }
+    ]
+  },
+  {
+    "name": "2-rule mutual cycle, P dipanggil duluan sebagai start rule (bukan L) -> tetep harus bener",
+    "grammar": "L = target:P \".\" \"x\" -> Access / \"x\" -> Var\n      P = target:P \"(\" \"n\" \")\" -> Call / L",
+    "tests": [
+      {
+        "name": "2-rule mutual cycle, P dipanggil duluan sebagai start rule (bukan L) -> tetep harus bener",
+        "input": "x(n)",
+        "expected": {
+          "tag": "Call",
+          "target": {
+            "tag": "Var"
+          }
+        },
+        "startRule": "P"
+      }
+    ]
+  },
+  {
+    "name": "3-level mutual chain A -> B -> C -> A",
+    "grammar": "A = left:B \"+\" \"n\" -> APlus / B\n      B = left:C \"-\" \"n\" -> BMinus / C\n      C = left:A \"*\" \"n\" -> CTimes / \"n\" -> CBase",
+    "tests": [
+      {
+        "name": "3-level mutual chain A -> B -> C -> A",
+        "input": "n*n",
+        "expected": {
+          "tag": "CTimes",
+          "left": {
+            "tag": "CBase"
+          }
+        },
+        "startRule": "A"
+      }
+    ]
+  },
+  {
+    "name": "3-level mutual chain, gagal total karena base case gak ketemu",
+    "grammar": "A = left:B \"+\" \"n\" -> APlus / B\n      B = left:C \"-\" \"n\" -> BMinus / C\n      C = left:A \"*\" \"n\" -> CTimes / \"n\" -> CBase",
+    "tests": [
+      {
+        "name": "3-level mutual chain, gagal total karena base case gak ketemu",
+        "input": "xyz",
+        "expected": "err",
+        "startRule": "A"
+      }
+    ]
+  },
+  {
+    "name": "right-associative binary op — 2 operand",
+    "grammar": "E = left:D \"+\" right:E -> Plus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "right-associative binary op — 2 operand",
+        "input": "1+2",
+        "expected": {
+          "tag": "Plus",
+          "left": {
+            "tag": "Digit",
+            "value": "1"
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "2"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "right-associative binary op — chained 3 operand, harus nest ke kanan",
+    "grammar": "E = left:D \"+\" right:E -> Plus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "right-associative binary op — chained 3 operand, harus nest ke kanan",
+        "input": "1+2+3",
+        "expected": {
+          "tag": "Plus",
+          "left": {
+            "tag": "Digit",
+            "value": "1"
+          },
+          "right": {
+            "tag": "Plus",
+            "left": {
+              "tag": "Digit",
+              "value": "2"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "3"
+            }
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "right recursion, base case doang -> gak boleh ke-wrap Plus",
+    "grammar": "E = left:D \"+\" right:E -> Plus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "right recursion, base case doang -> gak boleh ke-wrap Plus",
+        "input": "1",
+        "expected": {
+          "tag": "Digit",
+          "value": "1"
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "right recursion indirect (E -> F -> E), mutual tapi arahnya kanan semua",
+    "grammar": "E = value:$[0-9]+ \":\" next:F -> Cons / value:$[0-9]+ -> Nil\n      F = E",
+    "tests": [
+      {
+        "name": "right recursion indirect (E -> F -> E), mutual tapi arahnya kanan semua",
+        "input": "1:2:3",
+        "expected": {
+          "tag": "Cons",
+          "value": "1",
+          "next": {
+            "tag": "Cons",
+            "value": "2",
+            "next": {
+              "tag": "Nil",
+              "value": "3"
+            }
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "E (right-assoc +) membungkus M (left-assoc -), dua arah sekaligus",
+    "grammar": "E = left:M \"+\" right:E -> Plus / M\n      M = left:M \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "E (right-assoc +) membungkus M (left-assoc -), dua arah sekaligus",
+        "input": "9-3+1",
+        "expected": {
+          "tag": "Plus",
+          "left": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Digit",
+              "value": "9"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "3"
+            }
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "1"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "mixed, chained lebih panjang -> mastiin precedence gak collapse pas di-grow berkali-kali",
+    "grammar": "E = left:M \"+\" right:E -> Plus / M\n      M = left:M \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "mixed, chained lebih panjang -> mastiin precedence gak collapse pas di-grow berkali-kali",
+        "input": "9-3-1+2+5",
+        "expected": {
+          "tag": "Plus",
+          "left": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Minus",
+              "left": {
+                "tag": "Digit",
+                "value": "9"
+              },
+              "right": {
+                "tag": "Digit",
+                "value": "3"
+              }
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "1"
+            }
+          },
+          "right": {
+            "tag": "Plus",
+            "left": {
+              "tag": "Digit",
+              "value": "2"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "5"
+            }
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "mixed, cuma left-side (M) doang yang ke-trigger, E gak pernah grow",
+    "grammar": "E = left:M \"+\" right:E -> Plus / M\n      M = left:M \"-\" right:D -> Minus / D\n      D = value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "mixed, cuma left-side (M) doang yang ke-trigger, E gak pernah grow",
+        "input": "9-3-1",
+        "expected": {
+          "tag": "Minus",
+          "left": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Digit",
+              "value": "9"
+            },
+            "right": {
+              "tag": "Digit",
+              "value": "3"
+            }
+          },
+          "right": {
+            "tag": "Digit",
+            "value": "1"
+          }
+        },
+        "startRule": "E"
+      }
+    ]
+  },
+  {
+    "name": "mixed dibungkus indirect cycle: N (left) -> M (right) -> N lagi",
+    "grammar": "N = left:N \"-\" right:M -> Minus / M\n      M = value:$[0-9]+ \"*\" next:N -> Times / value:$[0-9]+ -> Digit",
+    "tests": [
+      {
+        "name": "mixed dibungkus indirect cycle: N (left) -> M (right) -> N lagi",
+        "input": "2*3-4*1-5",
+        "expected": {
+          "tag": "Times",
+          "value": "2",
+          "next": {
+            "tag": "Minus",
+            "left": {
+              "tag": "Digit",
+              "value": "3"
+            },
+            "right": {
+              "tag": "Times",
+              "value": "4",
+              "next": {
+                "tag": "Minus",
+                "left": {
+                  "tag": "Digit",
+                  "value": "1"
+                },
+                "right": {
+                  "tag": "Digit",
+                  "value": "5"
+                }
+              }
+            }
+          }
+        },
+        "startRule": "N"
+      }
+    ]
+  },
+  {
+    "name": "mini-sql",
+    "grammar": "Query = _ \"SELECT\"i _ columns:SelectColumns _ \"FROM\"i _ table:Id _ where:WhereClause? _ orderBy:OrderByClause? _ limit:LimitClause? _ -> Query\nSelectColumns = \"*\" -> Star / columns:SelectColumn { 1 ; _ \",\" _ } -> Columns\nSelectColumn = expression:ColumnExpr _ alias:ColumnAlias? -> SelectColumn\nColumnExpr = table:Id _ \".\" _ column:Id -> QualifiedColumn / name:Id -> UnqualifiedColumn\nColumnAlias = \"AS\"i _ name:Id -> ColumnAlias\nWhereClause = \"WHERE\"i _ condition:OrCondition -> WhereClause\nOrCondition = conditions:AndCondition { 2 ; _ \"OR\"i _ } -> OrCondition / AndCondition\nAndCondition = conditions:PrimaryCondition { 2 ; _ \"AND\"i _ } -> AndCondition / PrimaryCondition\nPrimaryCondition = \"NOT\"i _ condition:PrimaryCondition -> Not / \"(\" _ ^OrCondition _ \")\" / Comparison\nComparison = left:ValueExpr _ op:(\">=\" / \"<=\" / \"!=\" / \"<>\" / \">\" / \"<\" / \"=\") _ right:ValueExpr -> Comparison\nValueExpr = StringLiteral / NumberLiteral / \"NULL\"i -> NullLiteral / name:Id -> ColumnRef\nStringLiteral = \"'\" value:$( StringChar* ) \"'\" -> StringLiteral\nStringChar = \"\\\\\" . / ~\"'\"\nNumberLiteral = value:$( \"-\"? [0-9]+ (\".\" [0-9]+)? ) -> NumberLiteral\nOrderByClause = \"ORDER\"i _ \"BY\"i _ orderings:Ordering { 1 ; _ \",\" _ } -> OrderByClause\nOrdering = column:Id _ direction:OrderDirection? -> Ordering\nOrderDirection = \"DESC\"i -> Desc / \"ASC\"i -> Asc\nLimitClause = \"LIMIT\"i _ value:NumberLiteral -> LimitClause\nId = $( [a-z_]i [a-z0-9_]i* )\n_ = Space*\n__ = Space+\nSpace = WhiteSpace / SingleLineComment / MultiLineComment\nWhiteSpace = [ \\t\\r\\n]+\nSingleLineComment = \"--\" ~[\\r\\n]*\nMultiLineComment = \"/*\" ~\"*/\"* \"*/\"",
+    "tests": [
+      {
+        "name": "Query root",
+        "input": "SELECT * FROM users",
+        "expected": {
+          "tag": "Query",
+          "table": "users",
+          "columns": {
+            "tag": "Star"
+          }
+        }
+      },
+      {
+        "name": "SELECT single column",
+        "input": "SELECT name FROM users",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "tag": "Columns",
+            "columns": [
+              {
+                "expression": {
+                  "tag": "UnqualifiedColumn",
+                  "name": "name"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "SELECT multiple columns",
+        "input": "SELECT name, age FROM users",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "tag": "Columns",
+            "columns": [
+              {
+                "expression": {
+                  "name": "name"
+                }
+              },
+              {
+                "expression": {
+                  "name": "age"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "SELECT with alias",
+        "input": "SELECT name AS n FROM users",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "tag": "Columns",
+            "columns": [
+              {
+                "expression": {
+                  "name": "name"
+                },
+                "alias": {
+                  "tag": "ColumnAlias",
+                  "name": "n"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "qualified column reference",
+        "input": "SELECT users.name FROM users",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "tag": "Columns",
+            "columns": [
+              {
+                "expression": {
+                  "tag": "QualifiedColumn",
+                  "table": "users",
+                  "column": "name"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "table name",
+        "input": "SELECT * FROM orders",
+        "expected": {
+          "tag": "Query",
+          "table": "orders"
+        }
+      },
+      {
+        "name": "WHERE equality with string",
+        "input": "SELECT * FROM users WHERE city = 'Jakarta'",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "tag": "WhereClause",
+            "condition": {
+              "tag": "Comparison",
+              "left": {
+                "tag": "ColumnRef",
+                "name": "city"
+              },
+              "op": "=",
+              "right": {
+                "tag": "StringLiteral",
+                "value": "Jakarta"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE equality with number",
+        "input": "SELECT * FROM users WHERE age = 25",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "tag": "WhereClause",
+            "condition": {
+              "tag": "Comparison",
+              "right": {
+                "tag": "NumberLiteral",
+                "value": "25"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE greater than",
+        "input": "SELECT * FROM users WHERE age > 28",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "Comparison",
+              "op": ">"
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE less than or equal",
+        "input": "SELECT * FROM users WHERE age <= 25",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "op": "<="
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE not equal !=",
+        "input": "SELECT * FROM users WHERE city != 'Jakarta'",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "op": "!="
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE not equal <>",
+        "input": "SELECT * FROM users WHERE age <> 25",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "op": "<>"
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE AND",
+        "input": "SELECT * FROM users WHERE city = 'Jakarta' AND age > 32",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "AndCondition",
+              "conditions": [
+                {
+                  "tag": "Comparison"
+                },
+                {
+                  "tag": "Comparison"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE OR",
+        "input": "SELECT * FROM users WHERE city = 'Jakarta' OR city = 'Bandung'",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "OrCondition",
+              "conditions": [
+                {},
+                {}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE AND precedence over OR",
+        "input": "SELECT name FROM users WHERE city = 'Jakarta' AND age > 32 OR age = 25",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "OrCondition",
+              "conditions": [
+                {
+                  "tag": "AndCondition"
+                },
+                {
+                  "tag": "Comparison"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE parentheses",
+        "input": "SELECT name FROM users WHERE city = 'Jakarta' AND (age = 30 OR age = 35)",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "AndCondition",
+              "conditions": [
+                {},
+                {
+                  "tag": "OrCondition"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE NOT",
+        "input": "SELECT name FROM users WHERE NOT city = 'Jakarta'",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "Not",
+              "condition": {
+                "tag": "Comparison"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "WHERE double NOT",
+        "input": "SELECT name FROM users WHERE NOT NOT age = 30",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "tag": "Not",
+              "condition": {
+                "tag": "Not",
+                "condition": {
+                  "tag": "Comparison"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "NULL comparison",
+        "input": "SELECT * FROM items WHERE value = NULL",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "right": {
+                "tag": "NullLiteral"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "negative number",
+        "input": "SELECT * FROM orders WHERE amount > -1",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "right": {
+                "tag": "NumberLiteral",
+                "value": "-1"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "decimal number",
+        "input": "SELECT * FROM orders WHERE amount >= 200.5",
+        "expected": {
+          "tag": "Query",
+          "where": {
+            "condition": {
+              "right": {
+                "tag": "NumberLiteral",
+                "value": "200.5"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "ORDER BY ascending default",
+        "input": "SELECT name, age FROM users ORDER BY age",
+        "expected": {
+          "tag": "Query",
+          "orderBy": {
+            "tag": "OrderByClause",
+            "orderings": [
+              {
+                "column": "age",
+                "direction": null
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "ORDER BY DESC",
+        "input": "SELECT name, age FROM users ORDER BY age DESC",
+        "expected": {
+          "tag": "Query",
+          "orderBy": {
+            "orderings": [
+              {
+                "column": "age",
+                "direction": {
+                  "tag": "Desc"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "ORDER BY ASC",
+        "input": "SELECT name, age FROM users ORDER BY age ASC",
+        "expected": {
+          "tag": "Query",
+          "orderBy": {
+            "orderings": [
+              {
+                "direction": {
+                  "tag": "Asc"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "ORDER BY multiple columns",
+        "input": "SELECT name, age FROM users ORDER BY age ASC, name DESC",
+        "expected": {
+          "tag": "Query",
+          "orderBy": {
+            "orderings": [
+              {
+                "column": "age",
+                "direction": {
+                  "tag": "Asc"
+                }
+              },
+              {
+                "column": "name",
+                "direction": {
+                  "tag": "Desc"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "LIMIT",
+        "input": "SELECT * FROM users LIMIT 3",
+        "expected": {
+          "tag": "Query",
+          "limit": {
+            "tag": "LimitClause",
+            "value": {
+              "tag": "NumberLiteral",
+              "value": "3"
+            }
+          }
+        }
+      },
+      {
+        "name": "LIMIT 0",
+        "input": "SELECT * FROM users LIMIT 0",
+        "expected": {
+          "tag": "Query",
+          "limit": {
+            "value": {
+              "value": "0"
+            }
+          }
+        }
+      },
+      {
+        "name": "combined WHERE + ORDER BY",
+        "input": "SELECT name, age FROM users WHERE city = 'Jakarta' ORDER BY age ASC",
+        "expected": {
+          "tag": "Query",
+          "where": {},
+          "orderBy": {}
+        }
+      },
+      {
+        "name": "combined WHERE + ORDER BY + LIMIT",
+        "input": "SELECT name, age FROM users WHERE city = 'Bandung' OR city = 'Jakarta' ORDER BY age DESC LIMIT 2",
+        "expected": {
+          "tag": "Query",
+          "where": {},
+          "orderBy": {},
+          "limit": {}
+        }
+      },
+      {
+        "name": "case insensitive keywords",
+        "input": "select name from users limit 2",
+        "expected": {
+          "tag": "Query",
+          "table": "users",
+          "limit": {
+            "value": {
+              "value": "2"
+            }
+          }
+        }
+      },
+      {
+        "name": "mixed case keywords",
+        "input": "Select Name From Users Order By Age Desc Limit 1",
+        "expected": {
+          "tag": "Query",
+          "table": "Users",
+          "orderBy": {
+            "orderings": [
+              {
+                "direction": {
+                  "tag": "Desc"
+                }
+              }
+            ]
+          },
+          "limit": {
+            "value": {
+              "value": "1"
+            }
+          }
+        }
+      },
+      {
+        "name": "extra whitespace",
+        "input": "SELECT   name   FROM   users   LIMIT   1",
+        "expected": {
+          "tag": "Query"
+        }
+      },
+      {
+        "name": "newlines between tokens",
+        "input": "SELECT\nname\nFROM\nusers\nLIMIT\n1",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "columns": [
+              {
+                "expression": {
+                  "name": "name"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "SQL single-line comment",
+        "input": "SELECT name -- this is a comment\nFROM users LIMIT 1",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "columns": [
+              {
+                "expression": {
+                  "name": "name"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "SQL multi-line comment",
+        "input": "SELECT /* comment */ name FROM users LIMIT 1",
+        "expected": {
+          "tag": "Query",
+          "columns": {
+            "columns": [
+              {
+                "expression": {
+                  "name": "name"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "[mini-sql] syntax error",
+        "input": "SELEC * FROM users",
+        "expected": "err"
+      },
+      {
+        "name": "incomplete query error",
+        "input": "SELECT name FROM",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "mini-golang",
+    "grammar": "Program = _ statements:Statement { 0 ; _ } _ -> Program\nStatement = VarDecl / ShortVarDecl / AssignStmt / IfStmt / ForStmt / FuncDecl / ReturnStmt / ExprStmt\nVarDecl = \"var\" __ name:Id _ type:Type _ \"=\" _ value:Expr -> VarDecl\nShortVarDecl = name:Id _ \":=\" _ value:Expr -> ShortVarDecl\nAssignStmt = name:Id _ \"=\" _ value:Expr -> AssignStmt\nIfStmt = \"if\" _ condition:Expr _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" _ else:ElseClause? -> IfStmt\nElseClause = \"else\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> ElseClause\nForStmt = \"for\" _ condition:Expr? _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> ForStmt\nFuncDecl = \"func\" __ name:Id _ \"(\" _ params:ParamList? _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> FuncDecl\nReturnStmt = \"return\" _ value:Expr? -> ReturnStmt\nExprStmt = expr:Expr -> ExprStmt\nParamList = params:Param { 2 ; _ \",\" _ } -> ParamList / params:Param -> ParamList\nParam = name:Id _ \":\" _ type:Type -> Param\nType = \"int\" / \"float64\" / \"string\" / \"bool\" / \"[]\" _ type:Type -> SliceType\nExpr = OrExpr\nOrExpr = left:OrExpr _ \"||\" _ right:AndExpr -> Or / AndExpr\nAndExpr = left:AndExpr _ \"&&\" _ right:EqExpr -> And / EqExpr\nEqExpr = left:EqExpr _ \"==\" _ right:RelExpr -> Eq / left:EqExpr _ \"!=\" _ right:RelExpr -> Neq / RelExpr\nRelExpr = left:RelExpr _ \"<\" _ right:AddExpr -> Lt / left:RelExpr _ \">\" _ right:AddExpr -> Gt / left:RelExpr _ \"<=\" _ right:AddExpr -> Lte / left:RelExpr _ \">=\" _ right:AddExpr -> Gte / AddExpr\nAddExpr = left:AddExpr _ \"+\" _ right:MulExpr -> Add / left:AddExpr _ \"-\" _ right:MulExpr -> Sub / MulExpr\nMulExpr = left:MulExpr _ \"*\" _ right:UnaryExpr -> Mul / left:MulExpr _ \"/\" _ right:UnaryExpr -> Div / left:MulExpr _ \"%\" _ right:UnaryExpr -> Mod / UnaryExpr\nUnaryExpr = op:UnaryOp _ expr:UnaryExpr -> UnaryExpr / PostfixExpr\nUnaryOp = \"!\" / \"-\"\nPostfixExpr = expr:Primary _ \"[\" _ index:Expr _ \"]\" -> IndexExpr / Primary\nPrimary = IntLit / FloatLit / StringLit / BoolLit / SliceLit / CallExpr / GroupExpr / Ident\nIntLit = value:Number -> IntLit\nFloatLit = value:$( Number \".\" Number ) -> FloatLit\nStringLit = value:GoString -> StringLit\nGoString = \"\\\"\" ^GoChar* \"\\\"\"\nGoChar = \"\\\\\" . / ~\"\\\"\"\nBoolLit = value:(\"true\" / \"false\") -> BoolLit\nSliceLit = \"[\" _ elements:ArgList? _ \"]\" -> SliceLit\nCallExpr = name:Id _ \"(\" _ args:ArgList? _ \")\" -> CallExpr\nGroupExpr = \"(\" _ ^Expr _ \")\"\nIdent = name:Id -> Ident\nArgList = args:Expr { 2 ; _ \",\" _ } -> ArgList / args:Expr -> ArgList\nNumber = \"0\" / $( [1-9] [0-9]* )\nId = $( [a-z_]i [a-z0-9_]i* )\n_ = Space*\n__ = Space+\nSpace = WhiteSpace / SingleLineComment / MultiLineComment\nWhiteSpace = [ \\t\\r\\n]+\nSingleLineComment = \"//\" ~[\\r\\n]*\nMultiLineComment = \"/*\" ~\"*/\"* \"*/\"",
+    "tests": [
+      {
+        "name": "[mini-golang] Program root",
+        "input": "x := 42",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ShortVarDecl",
+              "name": "x",
+              "value": {
+                "tag": "IntLit",
+                "value": "42"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "VarDecl dengan type int",
+        "input": "var x int = 10",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "VarDecl",
+              "name": "x",
+              "type": "int",
+              "value": {
+                "tag": "IntLit",
+                "value": "10"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "VarDecl dengan type string",
+        "input": "var name string = \"hello\"",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "VarDecl",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "BoolLit true",
+        "input": "ok := true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ShortVarDecl",
+              "value": {
+                "tag": "BoolLit",
+                "value": "true"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "BoolLit false",
+        "input": "ok := false",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "BoolLit",
+                "value": "false"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Add expression",
+        "input": "x := 3 + 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "left": {
+                  "tag": "IntLit",
+                  "value": "3"
+                },
+                "right": {
+                  "tag": "IntLit",
+                  "value": "4"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Sub expression",
+        "input": "x := 10 - 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub",
+                "left": {
+                  "value": "10"
+                },
+                "right": {
+                  "value": "3"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Mul expression",
+        "input": "x := 3 * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "value": "3"
+                },
+                "right": {
+                  "value": "4"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Div expression",
+        "input": "x := 10 / 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Div",
+                "left": {
+                  "value": "10"
+                },
+                "right": {
+                  "value": "3"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Mod expression",
+        "input": "x := 10 % 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mod"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] operator precedence (Add + Mul)",
+        "input": "x := 2 + 3 * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "left": {
+                  "value": "2"
+                },
+                "right": {
+                  "tag": "Mul",
+                  "left": {
+                    "value": "3"
+                  },
+                  "right": {
+                    "value": "4"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] parentheses override precedence",
+        "input": "x := (2 + 3) * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Add"
+                },
+                "right": {
+                  "value": "4"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] left associative subtraction",
+        "input": "x := 10 - 3 - 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub",
+                "left": {
+                  "tag": "Sub",
+                  "left": {
+                    "value": "10"
+                  },
+                  "right": {
+                    "value": "3"
+                  }
+                },
+                "right": {
+                  "value": "2"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] unary minus",
+        "input": "x := -5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "UnaryExpr",
+                "op": "-",
+                "expr": {
+                  "tag": "IntLit",
+                  "value": "5"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality expression",
+        "input": "x := 3 == 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Eq",
+                "left": {
+                  "value": "3"
+                },
+                "right": {
+                  "value": "3"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "inequality expression",
+        "input": "x := 3 != 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Neq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "less than",
+        "input": "x := 3 < 5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "greater than",
+        "input": "x := 5 > 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Gt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "less than or equal",
+        "input": "x := 3 <= 5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Lte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "greater than or equal",
+        "input": "x := 5 >= 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Gte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] logical and",
+        "input": "x := true && false",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "And",
+                "left": {
+                  "value": "true"
+                },
+                "right": {
+                  "value": "false"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] logical or",
+        "input": "x := false || true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Or"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "logical not",
+        "input": "x := !true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "UnaryExpr",
+                "op": "!",
+                "expr": {
+                  "value": "true"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] IfStmt",
+        "input": "if true { x := 1 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "condition": {
+                "tag": "BoolLit"
+              },
+              "body": [
+                {
+                  "tag": "ShortVarDecl"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt/ElseClause",
+        "input": "if false { x := 1 } else { x := 2 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "else": {
+                "tag": "ElseClause",
+                "body": [
+                  {
+                    "value": {
+                      "value": "2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "ForStmt with condition",
+        "input": "for i < 3 { println(i) }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ForStmt",
+              "condition": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "ForStmt without condition (infinite loop)",
+        "input": "for { println(\"forever\") }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ForStmt",
+              "condition": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] FuncDecl basic",
+        "input": "func greet() { println(\"hello\") }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "name": "greet"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] FuncDecl with params",
+        "input": "func add(a: int, b: int) { return a + b }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "name": "add",
+              "params": {
+                "tag": "ParamList",
+                "params": [
+                  {
+                    "name": "a",
+                    "type": "int"
+                  },
+                  {
+                    "name": "b",
+                    "type": "int"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "FuncDecl single param",
+        "input": "func double(x: int) { return x * 2 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "params": {
+                "tag": "ParamList",
+                "params": {
+                  "name": "x"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "ReturnStmt",
+        "input": "func f() { return 42 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "body": [
+                {
+                  "tag": "ReturnStmt",
+                  "value": {
+                    "tag": "IntLit",
+                    "value": "42"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "ReturnStmt tanpa value",
+        "input": "func f() { return }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "body": [
+                {
+                  "tag": "ReturnStmt"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] CallExpr",
+        "input": "greet()",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expr": {
+                "tag": "CallExpr",
+                "name": "greet"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "CallExpr with args",
+        "input": "add(3, 4)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expr": {
+                "tag": "CallExpr",
+                "name": "add",
+                "args": {
+                  "tag": "ArgList",
+                  "args": [
+                    {
+                      "value": "3"
+                    },
+                    {
+                      "value": "4"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "CallExpr single arg",
+        "input": "println(x)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expr": {
+                "tag": "CallExpr",
+                "name": "println",
+                "args": {
+                  "tag": "ArgList",
+                  "args": {
+                    "tag": "Ident",
+                    "name": "x"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] Ident expression",
+        "input": "x := y",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Ident",
+                "name": "y"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "SliceLit",
+        "input": "arr := [1, 2, 3]",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "SliceLit",
+                "elements": {
+                  "tag": "ArgList",
+                  "args": [
+                    {
+                      "value": "1"
+                    },
+                    {
+                      "value": "2"
+                    },
+                    {
+                      "value": "3"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "SliceLit empty",
+        "input": "arr := []",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "SliceLit",
+                "elements": null
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IndexExpr",
+        "input": "x := arr[0]",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "IndexExpr",
+                "expr": {
+                  "tag": "Ident",
+                  "name": "arr"
+                },
+                "index": {
+                  "tag": "IntLit",
+                  "value": "0"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] AssignStmt",
+        "input": "i = i + 1",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "AssignStmt",
+              "name": "i",
+              "value": {
+                "tag": "Add"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] multiple statements",
+        "input": "x := 1\ny := 2\nz := x + y",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "name": "x"
+            },
+            {
+              "name": "y"
+            },
+            {
+              "name": "z"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] complex nested expression",
+        "input": "x := (a + b) * (c - d)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Add"
+                },
+                "right": {
+                  "tag": "Sub"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-golang] syntax error",
+        "input": "x :=",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "mini-js",
+    "grammar": "Program = _ statements:Statement { 0 ; _ } _ -> Program\nStatement = VarDecl / AssignStmt / IfStmt / WhileStmt / ForStmt / FuncDecl / ReturnStmt / ExprStmt\nVarDecl = keyword:(\"const\" / \"let\") __ name:Id _ \"=\" _ value:Expression _ \";\"? -> VarDecl\nAssignStmt = name:Id _ \"=\" _ value:Expression _ \";\"? -> AssignStmt\nIfStmt = \"if\" _ \"(\" _ condition:Expression _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" _ else:Else? -> IfStmt\nElse = \"else\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> Else\nWhileStmt = \"while\" _ \"(\" _ condition:Expression _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> While\nForStmt = \"for\" _ \"(\" _ init:ForInit? _ \";\" _ condition:Expression? _ \";\" _ update:ForUpdate? _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> For\nForInit = keyword:(\"const\" / \"let\") __ name:Id _ \"=\" _ value:Expression -> VarDecl / name:Id _ \"=\" _ value:Expression -> Assign\nForUpdate = name:Id _ \"=\" _ value:Expression -> Assign / Expression\nFuncDecl = \"function\" __ name:Id _ \"(\" _ params:ParamList? _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> FuncDecl\nReturnStmt = \"return\" _ value:Expression? _ \";\"? -> Return\nExprStmt = expression:Expression _ \";\"? -> ExprStmt\nParamList = params:Param { 2 ; _ \",\" _ } -> ParamList / params:Param -> ParamList\nParam = \"...\" name:Id -> RestParam / name:Id -> Param\nExpression = OrExpr\nOrExpr = left:OrExpr _ \"||\" _ right:AndExpr -> Or / AndExpr\nAndExpr = left:AndExpr _ \"&&\" _ right:EqExpr -> And / EqExpr\nEqExpr = left:EqExpr _ \"===\" _ right:RelExpr -> StrictEq / left:EqExpr _ \"!==\" _ right:RelExpr -> StrictNeq / left:EqExpr _ \"==\" _ right:RelExpr -> Eq / left:EqExpr _ \"!=\" _ right:RelExpr -> Neq / left:EqExpr _ \"<=\" _ right:RelExpr -> Lte / left:EqExpr _ \">=\" _ right:RelExpr -> Gte / left:EqExpr _ \"<\" _ right:RelExpr -> Lt / left:EqExpr _ \">\" _ right:RelExpr -> Gt / RelExpr\nRelExpr = left:RelExpr _ \"<\" _ right:AddExpr -> Lt / left:RelExpr _ \">\" _ right:AddExpr -> Gt / left:RelExpr _ \"<=\" _ right:AddExpr -> Lte / left:RelExpr _ \">=\" _ right:AddExpr -> Gte / AddExpr\nAddExpr = left:AddExpr _ \"+\" _ right:MulExpr -> Add / left:AddExpr _ \"-\" _ right:MulExpr -> Sub / MulExpr\nMulExpr = left:MulExpr _ \"*\" _ right:UnaryExpr -> Mul / left:MulExpr _ \"/\" _ right:UnaryExpr -> Div / left:MulExpr _ \"%\" _ right:UnaryExpr -> Mod / UnaryExpr\nUnaryExpr = op:UnaryOp _ expression:UnaryExpr -> Unary / PostfixExpr\nUnaryOp = \"++\" / \"--\" / \"!\" / \"-\"\nPostfixExpr = expression:Primary tail:PostfixTail* -> Chained\nPostfixTail = \"[\" _ index:Expression _ \"]\" -> Index / \".\" _ name:Id -> Member / op:PostfixOp -> Postfix\nPostfixOp = \"++\" / \"--\"\nPrimary = TaggedTemplate / CallExpr / TemplateString / Bool / Null / ArrayLit / Group / Float / Int / String / Ident\nTaggedTemplate = name:Id _ template:TemplateString -> TaggedTemplate\nCallExpr = callee:$( Id \".\" Id ) _ \"(\" _ args:ArgList? _ \")\" -> CallExpr / name:Id _ \"(\" _ args:ArgList? _ \")\" -> CallExpr\nTemplateString = \"`\" parts:TemplatePart* \"`\" -> TemplateString\nTemplatePart = Interpolation / TextPart\nInterpolation = \"${\" _ expression:Expression _ \"}\" -> Interpolation\nTextPart = value:$( ( \"\\\\\" . / ~(\"`\" / \"${\") )+ ) -> TextPart\nString = value:DoubleString -> String / value:SingleString -> String\nDoubleString = \"\\\"\" ^DChar* \"\\\"\"\nDChar = \"\\\\\" . / ~\"\\\"\"\nSingleString = \"'\" ^SChar* \"'\"\nSChar = \"\\\\\" . / ~\"'\"\nBool = value:(\"true\" / \"false\") -> Bool\nNull = \"null\" -> Null\nArrayLit = \"[\" _ elements:ArgList? _ \"]\" -> ArrayLit\nIdent = name:Id -> Ident\nId = $( [a-z_]i [a-z0-9_]i* )\nGroup = \"(\" _ ^Expression _ \")\"\nArgList = args:Expression { 2 ; _ \",\" _ } -> ArgList / args:Expression -> ArgList\nNumber = \"0\" / $( [1-9] [0-9]* )\nFloat = value:$( Number \".\" Number ) -> Float\nInt = value:Number -> Int\n_ = Space*\n__ = Space+\nSpace = WhiteSpace / SingleLineComment / MultiLineComment\nWhiteSpace = [ \\t\\r\\n]+\nSingleLineComment = \"//\" ~[\\r\\n]*\nMultiLineComment = \"/*\" ~\"*/\"* \"*/\"",
+    "tests": [
+      {
+        "name": "[mini-js] Program root",
+        "input": "const x = 1",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "VarDecl"
+            }
+          ]
+        }
+      },
+      {
+        "name": "VarDecl const",
+        "input": "const x = 42",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "VarDecl",
+              "keyword": "const",
+              "name": "x",
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Int",
+                  "value": "42"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "VarDecl let",
+        "input": "let y = \"hello\"",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "VarDecl",
+              "keyword": "let",
+              "name": "y",
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] AssignStmt",
+        "input": "x = 5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "AssignStmt",
+              "name": "x",
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Int",
+                  "value": "5"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt with Gt condition (binary op, no Chained wrap)",
+        "input": "if (x > 3) { const y = 1 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "condition": {
+                "tag": "Gt",
+                "left": {
+                  "tag": "Chained"
+                }
+              },
+              "body": [
+                {
+                  "tag": "VarDecl"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt with Bool condition (Primary, Chained wrapped)",
+        "input": "if (false) { const a = 1 } else { const b = 2 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "condition": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Bool"
+                }
+              },
+              "else": {
+                "tag": "Else"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] While loop",
+        "input": "while (n > 0) { n = n - 1 }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "While",
+              "condition": {
+                "tag": "Gt",
+                "left": {
+                  "tag": "Chained"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] For loop",
+        "input": "for (let i = 0; i < 3; i++) { console.log(i) }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "For",
+              "init": {
+                "tag": "VarDecl",
+                "name": "i"
+              },
+              "condition": {
+                "tag": "Lt"
+              },
+              "update": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Ident",
+                  "name": "i"
+                },
+                "tail": [
+                  {
+                    "tag": "Postfix",
+                    "op": "++"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] For loop tanpa init",
+        "input": "for (; i < 2; i++) { console.log(i) }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "condition": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] FuncDecl basic",
+        "input": "function greet() { return \"hello\" }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "name": "greet"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] FuncDecl with params",
+        "input": "function add(a, b) { return a + b }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "params": {
+                "tag": "ParamList",
+                "params": [
+                  {
+                    "tag": "Param",
+                    "name": "a"
+                  },
+                  {
+                    "tag": "Param",
+                    "name": "b"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "FuncDecl with rest param",
+        "input": "function sum(...nums) { return nums }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "params": {
+                "tag": "ParamList",
+                "params": {
+                  "tag": "RestParam",
+                  "name": "nums"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Return with value",
+        "input": "return 42",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Return",
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Int",
+                  "value": "42"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Return tanpa value",
+        "input": "return",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Return"
+            }
+          ]
+        }
+      },
+      {
+        "name": "ExprStmt wraps in Chained",
+        "input": "console.log(1)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "CallExpr"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "CallExpr console.log",
+        "input": "console.log(1, 2, \"tiga\")",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "CallExpr",
+                  "callee": "console.log"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "CallExpr nama biasa",
+        "input": "tambah(2, 3)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "CallExpr",
+                  "name": "tambah"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "TemplateString dasar",
+        "input": "console.log(`halo`)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "CallExpr",
+                  "args": {
+                    "tag": "ArgList",
+                    "args": {
+                      "tag": "Chained",
+                      "expression": {
+                        "tag": "TemplateString"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "TemplateString with interpolation",
+        "input": "console.log(`1 + 2 = ${1 + 2}`)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "CallExpr",
+                  "args": {
+                    "tag": "ArgList",
+                    "args": {
+                      "tag": "Chained",
+                      "expression": {
+                        "tag": "TemplateString"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "TaggedTemplate",
+        "input": "greet`halo ${nama}`",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "TaggedTemplate",
+                  "name": "greet",
+                  "template": {
+                    "tag": "TemplateString"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Int literal",
+        "input": "const x = 42",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Int",
+                  "value": "42"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Float literal",
+        "input": "const x = 3.14",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Float",
+                  "value": "3.14"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "String literal #1",
+        "input": "const x = \"hello\"",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "String literal #2",
+        "input": "const x = 'halo'",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Bool literal",
+        "input": "const x = true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Bool",
+                  "value": "true"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Null literal",
+        "input": "const x = null",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Null"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Ident expression",
+        "input": "const y = x",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "Ident",
+                  "name": "x"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Add expression (binary op, no Chained wrap at top)",
+        "input": "const x = 3 + 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "left": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "3"
+                  }
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "4"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Sub expression",
+        "input": "const x = 10 - 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Mul expression",
+        "input": "const x = 3 * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Div expression",
+        "input": "const x = 10 / 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Div"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] Mod expression",
+        "input": "const x = 7 % 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mod"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] left associative subtraction",
+        "input": "const x = 10 - 3 - 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub",
+                "left": {
+                  "tag": "Sub"
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "2"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "unary minus produces Unary node",
+        "input": "const x = -5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Unary",
+                "op": "-",
+                "expression": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "5"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "unary not produces Unary node",
+        "input": "const x = !true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Unary",
+                "op": "!",
+                "expression": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Bool",
+                    "value": "true"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality",
+        "input": "const x = 3 === 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "StrictEq",
+                "left": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "3"
+                  }
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "3"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "loose equality",
+        "input": "const x = 3 == 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Eq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "inequality",
+        "input": "const x = 3 !== 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "StrictNeq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] comparison operators #1",
+        "input": "const x = 3 < 5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] comparison operators #2",
+        "input": "const x = 5 > 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Gt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] logical and",
+        "input": "const x = true && false",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "And",
+                "left": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Bool",
+                    "value": "true"
+                  }
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Bool",
+                    "value": "false"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] logical or",
+        "input": "const x = false || true",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Or"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] ArrayLit",
+        "input": "const arr = [10, 20, 30]",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "ArrayLit"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] ArrayLit empty",
+        "input": "const arr = []",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "expression": {
+                  "tag": "ArrayLit",
+                  "elements": null
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Index access via Chained",
+        "input": "const x = arr[0]",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "tail": [
+                  {
+                    "tag": "Index"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Member access .length",
+        "input": "const x = arr.length",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "tail": [
+                  {
+                    "tag": "Member",
+                    "name": "length"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] operator precedence (Add + Mul)",
+        "input": "const x = 2 + 3 * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "right": {
+                  "tag": "Mul"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] parentheses override precedence",
+        "input": "const x = (2 + 3) * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Add"
+                  }
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Int",
+                    "value": "4"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Chained: index + member",
+        "input": "const x = arr[0].length",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Chained",
+                "tail": [
+                  {
+                    "tag": "Index"
+                  },
+                  {
+                    "tag": "Member"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] multiple statements",
+        "input": "const a = 1\nconst b = 2\nconsole.log(a + b)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {},
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "name": "[mini-js] syntax error",
+        "input": "console.log(`halo)",
+        "expected": "err"
+      },
+      {
+        "name": "[mini-js] complex nested expression",
+        "input": "const x = (a + b) * (c - d)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Add"
+                  }
+                },
+                "right": {
+                  "tag": "Chained",
+                  "expression": {
+                    "tag": "Sub"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "mini-php",
+    "grammar": "Program = _ statements:Statement { 0 ; _ } _ -> Program\nStatement = Echo / AssignStmt / IfStmt / WhileStmt / ForStmt / FuncDecl / ReturnStmt / EmptyStmt / ExprStmt\nEcho = \"echo\" _ args:ArgList _ \";\" -> Echo\nAssignStmt = \"$\" name:Id _ \"=\" _ value:Expression _ \";\" -> Assign\nIfStmt = \"if\" _ \"(\" _ condition:Expression _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" _ elseif:ElseIf { 0 ; _ } _ else:Else? -> IfStmt / \"if\" _ \"(\" _ condition:Expression _ \")\" _ body:Statement _ else:Else? -> IfStmt\nElseIf = \"elseif\" _ \"(\" _ condition:Expression _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> ElseIf / \"elseif\" _ \"(\" _ condition:Expression _ \")\" _ body:Statement -> ElseIf\nElse = \"else\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> Else / \"else\" _ body:Statement -> Else\nWhileStmt = \"while\" _ \"(\" _ condition:Expression _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> While / \"while\" _ \"(\" _ condition:Expression _ \")\" _ body:Statement -> While\nForStmt = \"for\" _ \"(\" _ init:ForInit? _ \";\" _ condition:Expression? _ \";\" _ update:ForUpdate? _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> For\nForInit = \"$\" name:Id _ \"=\" _ value:Expression -> Assign\nForUpdate = \"$\" name:Id _ \"=\" _ value:Expression -> Assign / Expression\nFuncDecl = \"function\" __ name:Id _ \"(\" _ params:ParamList? _ \")\" _ \"{\" _ body:Statement { 0 ; _ } _ \"}\" -> FuncDecl\nReturnStmt = \"return\" _ value:Expression? _ \";\" -> Return\nEmptyStmt = \";\" -> Empty\nExprStmt = expression:Expression _ \";\" -> ExprStmt\nParamList = params:Param { 2 ; _ \",\" _ } -> ParamList / params:Param -> ParamList\nParam = \"$\" name:Id -> Param\nArgList = args:Expression { 2 ; _ \",\" _ } -> ArgList / args:Expression -> ArgList\nExpression = OrExpr\nOrExpr = left:OrExpr _ \"||\" _ right:AndExpr -> Or / AndExpr\nAndExpr = left:AndExpr _ \"&&\" _ right:Comparison -> And / Comparison\nComparison = left:Comparison _ \"===\" _ right:Concat -> StrictEq / left:Comparison _ \"!==\" _ right:Concat -> StrictNeq / left:Comparison _ \"==\" _ right:Concat -> Eq / left:Comparison _ \"!=\" _ right:Concat -> Neq / left:Comparison _ \"<=\" _ right:Concat -> Lte / left:Comparison _ \">=\" _ right:Concat -> Gte / left:Comparison _ \"<\" _ right:Concat -> Lt / left:Comparison _ \">\" _ right:Concat -> Gt / Concat\nConcat = left:Concat _ \".\" _ right:Additive -> Concat / Additive\nAdditive = left:Additive _ \"+\" _ right:Multiplicative -> Add / left:Additive _ \"-\" _ right:Multiplicative -> Sub / Multiplicative\nMultiplicative = left:Multiplicative _ \"*\" _ right:Unary -> Mul / left:Multiplicative _ \"/\" _ right:Unary -> Div / left:Multiplicative _ \"%\" _ right:Unary -> Mod / Unary\nUnary = op:UnaryOp _ expression:Unary -> UnaryExpr / PostfixExpr\nUnaryOp = \"++\" / \"--\" / \"!\" / \"-\"\nPostfixExpr = expression:Var _ \"[\" _ index:Expression _ \"]\" -> IndexExpr / expression:Var _ op:PostfixOp -> PostfixExpr / Primary\nPostfixOp = \"++\" / \"--\"\nPrimary = Float / Int / String / SingleString / True / False / Null / CallExpr / Var / ArrayLit / Group\nInt = value:NumberText -> Int\nFloat = value:$( NumberText \".\" NumberText ) -> Float\nNumberText = \"0\" / $( [1-9] [0-9]* )\nString = value:(\"\\\"\" ^StringItem* \"\\\"\") -> String\nStringItem = \"\\\\\" . / ~\"\\\"\"\nSingleString = value:(\"'\" ^SingleItem* \"'\") -> SqString\nSingleItem = \"\\\\\" . / ~\"'\"\nTrue = \"true\"i -> True\nFalse = \"false\"i -> False\nNull = \"null\"i -> Null\nCallExpr = name:Id _ \"(\" _ args:ArgList? _ \")\" -> CallExpr\nVar = \"$\" name:Id -> Var\nArrayLit = \"[\" _ elements:ArgList? _ \"]\" -> ArrayLit\nGroup = \"(\" _ ^Expression _ \")\"\nId = $( [a-z_]i [a-z0-9_]i* )\n_ = Space*\n__ = Space+\nSpace = WhiteSpace / SingleLineComment / HashComment / MultiLineComment\nWhiteSpace = [ \\t\\r\\n]+\nSingleLineComment = \"//\" ~[\\r\\n]*\nHashComment = \"#\" ~[\\r\\n]*\nMultiLineComment = \"/*\" ~\"*/\"* \"*/\"\n",
+    "tests": [
+      {
+        "name": "Program root dengan tag <?php",
+        "input": "$x = 1;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Assign"
+            }
+          ]
+        }
+      },
+      {
+        "name": "Echo single arg",
+        "input": "echo 42;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Echo",
+              "args": {
+                "tag": "ArgList",
+                "args": {
+                  "tag": "Int",
+                  "value": "42"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Echo multiple args",
+        "input": "echo 1, 2, 3;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Echo",
+              "args": {
+                "tag": "ArgList",
+                "args": [
+                  {},
+                  {},
+                  {}
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Echo string single arg",
+        "input": "echo \"hello\";",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Echo",
+              "args": {
+                "tag": "ArgList",
+                "args": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Echo tanpa tag penutup",
+        "input": "echo \"open\";",
+        "expected": {
+          "tag": "Program"
+        }
+      },
+      {
+        "name": "Echo shorthand <?=",
+        "input": "echo 1 + 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Echo",
+              "args": {
+                "tag": "ArgList",
+                "args": {
+                  "tag": "Add"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Echo shorthand string",
+        "input": "echo \"halo\";",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Echo",
+              "args": {
+                "tag": "ArgList",
+                "args": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Int literal",
+        "input": "$x = 5;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Assign",
+              "name": "x",
+              "value": {
+                "tag": "Int",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Float literal",
+        "input": "$x = 3.14;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Float",
+                "value": "3.14"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "String double quote",
+        "input": "$nama = \"Budi\";",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "String"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "String single quote",
+        "input": "$x = 'hello';",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "SqString"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "True literal",
+        "input": "$ok = true;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "True"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "False literal",
+        "input": "$ok = false;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "False"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Null literal",
+        "input": "$x = null;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Null"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Var reference",
+        "input": "$y = $x;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Var",
+                "name": "x"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Add expression",
+        "input": "$x = 1 + 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "left": {
+                  "value": "1"
+                },
+                "right": {
+                  "value": "2"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Arithmetic operators #1",
+        "input": "$x = 5 - 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Arithmetic operators #2",
+        "input": "$x = 3 * 4;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Arithmetic operators #3",
+        "input": "$x = 10 / 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Div"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Arithmetic operators #4",
+        "input": "$x = 7 % 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mod"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] operator precedence",
+        "input": "$x = 1 + 2 * 3;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Add",
+                "right": {
+                  "tag": "Mul"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] parentheses override precedence",
+        "input": "$x = (1 + 2) * 3;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Add"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Concat with dot",
+        "input": "$x = \"foo\" . \"bar\";",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Concat",
+                "left": {
+                  "tag": "String"
+                },
+                "right": {
+                  "tag": "String"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] unary minus",
+        "input": "$x = -5;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "UnaryExpr",
+                "op": "-",
+                "expression": {
+                  "value": "5"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "unary not",
+        "input": "$x = !false;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "UnaryExpr",
+                "op": "!"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality operators #1",
+        "input": "$x = 1 == 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Eq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality operators #2",
+        "input": "$x = 1 != 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Neq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality operators #3",
+        "input": "$x = 1 === 1;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "StrictEq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "equality operators #4",
+        "input": "$x = 1 !== 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "StrictNeq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] comparison operators #1",
+        "input": "$x = 1 < 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] comparison operators #2",
+        "input": "$x = 1 > 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Gt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] comparison operators #3",
+        "input": "$x = 3 <= 3;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Lte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] comparison operators #4",
+        "input": "$x = 3 >= 4;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Gte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "logical and/or #1",
+        "input": "$x = true && false;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "And"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "logical and/or #2",
+        "input": "$x = true || false;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Or"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] left associative subtraction",
+        "input": "$x = 10 - 3 - 2;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Sub",
+                "left": {
+                  "tag": "Sub"
+                },
+                "right": {
+                  "value": "2"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt with braces",
+        "input": "if (true) { echo \"ya\"; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "condition": {
+                "tag": "True"
+              },
+              "body": [
+                {
+                  "tag": "Echo"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] IfStmt with Else",
+        "input": "if (false) { echo \"ya\"; } else { echo \"tidak\"; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "else": {
+                "tag": "Else",
+                "body": [
+                  {
+                    "tag": "Echo"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt with ElseIf",
+        "input": "if ($x == 1) { echo \"satu\"; } elseif ($x == 2) { echo \"dua\"; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "IfStmt",
+              "elseif": [
+                {
+                  "tag": "ElseIf",
+                  "condition": {
+                    "tag": "Eq"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] While loop",
+        "input": "while ($i < 3) { echo $i; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "While",
+              "condition": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] For loop",
+        "input": "for ($i = 0; $i < 3; $i++) { echo $i; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "For",
+              "init": {
+                "tag": "Assign",
+                "name": "i"
+              },
+              "condition": {
+                "tag": "Lt"
+              },
+              "update": {
+                "tag": "PostfixExpr",
+                "op": "++"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] For loop tanpa init",
+        "input": "for (; $i < 2; $i++) { echo $i; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "For",
+              "init": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "FuncDecl",
+        "input": "function sapa() { echo \"halo\"; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "name": "sapa"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] FuncDecl with params",
+        "input": "function tambah($a, $b) { return $a + $b; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "FuncDecl",
+              "params": {
+                "params": [
+                  {
+                    "tag": "Param",
+                    "name": "a"
+                  },
+                  {
+                    "tag": "Param",
+                    "name": "b"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Return with value",
+        "input": "function f() { return 42; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "body": [
+                {
+                  "tag": "Return",
+                  "value": {
+                    "tag": "Int",
+                    "value": "42"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] Return tanpa value",
+        "input": "function f() { return; }",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "body": [
+                {
+                  "tag": "Return"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] CallExpr",
+        "input": "strlen(\"halo\");",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expression": {
+                "tag": "CallExpr",
+                "name": "strlen"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] ArrayLit",
+        "input": "$a = [10, 20, 30];",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "ArrayLit",
+                "elements": {
+                  "args": [
+                    {
+                      "value": "10"
+                    },
+                    {
+                      "value": "20"
+                    },
+                    {
+                      "value": "30"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] ArrayLit empty",
+        "input": "$a = [];",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "ArrayLit",
+                "elements": null
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Index access",
+        "input": "$x = $a[0];",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "IndexExpr",
+                "expression": {
+                  "tag": "Var",
+                  "name": "a"
+                },
+                "index": {
+                  "value": "0"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Postfix increment",
+        "input": "$i++;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expression": {
+                "tag": "PostfixExpr",
+                "expression": {
+                  "tag": "Var"
+                },
+                "op": "++"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Prefix increment",
+        "input": "++$i;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "ExprStmt",
+              "expression": {
+                "tag": "UnaryExpr",
+                "op": "++"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Empty statement",
+        "input": ";",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Empty"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] multiple statements",
+        "input": "$a = 1; $b = 2; echo $a + $b;",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {},
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "name": "[mini-php] syntax error",
+        "input": "$x = ;",
+        "expected": "err"
+      },
+      {
+        "name": "[mini-php] complex nested expression",
+        "input": "$x = ($a + $b) * ($c - $d);",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "value": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Add"
+                },
+                "right": {
+                  "tag": "Sub"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "mini-pug",
+    "grammar": "Pug = Newlines* elements:(^Element Newlines*)+ Newlines* _ -> Pug\nElement = name:Tag attrs:Attrs? text:InlineText? _ children:>> Element <<* -> Element\nAttrs = \"(\" _ attrs:(^Attr _)+ _ \")\" -> Attrs\nAttr = name:AttrName value:( _ \"=\" _ ^AttrValue )? -> Attr\nAttrName = $([a-z] [a-z0-9_-]*)\nAttrValue = \"\\\"\" ^$(NotQuote*) \"\\\"\"\nNotQuote = ~\"\\\"\"\nNewlines = [\\r\\n]+\nTag = $([a-z.#] [a-z0-9.#]*)\nInlineText = __ ^$(NotNewline+)\nNotNewline = ~[\\r\\n]\n_ = Space*\n__ = Space+\nSpace = [\\t ]+",
+    "tests": [
+      {
+        "name": "Pug root",
+        "input": "p",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "tag": "Element"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tag sederhana",
+        "input": "p",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "tag": "Element",
+              "name": "p"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tag div",
+        "input": "div",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "tag": "Element",
+              "name": "div"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tag dengan inline text",
+        "input": "p Hello World",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "tag": "Element",
+              "name": "p",
+              "text": "Hello World"
+            }
+          ]
+        }
+      },
+      {
+        "name": "nested elements 2 level",
+        "input": "div\n  p Hello",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "tag": "Element",
+              "name": "div",
+              "children": [
+                {
+                  "tag": "Element",
+                  "name": "p",
+                  "text": "Hello"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "nested elements 3 level",
+        "input": "div\n  section\n    p Deep",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div",
+              "children": [
+                {
+                  "name": "section",
+                  "children": [
+                    {
+                      "name": "p",
+                      "text": "Deep"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "sibling elements",
+        "input": "div\n  p First\n  p Second",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "children": [
+                {
+                  "name": "p",
+                  "text": "First"
+                },
+                {
+                  "name": "p",
+                  "text": "Second"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "class shorthand",
+        "input": "div.container",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div.container"
+            }
+          ]
+        }
+      },
+      {
+        "name": "id shorthand",
+        "input": "div#main",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div#main"
+            }
+          ]
+        }
+      },
+      {
+        "name": "class dan id bareng",
+        "input": "div.container#main",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div.container#main"
+            }
+          ]
+        }
+      },
+      {
+        "name": "multiple classes",
+        "input": "div.foo.bar",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div.foo.bar"
+            }
+          ]
+        }
+      },
+      {
+        "name": "implicit div dengan class",
+        "input": ".container",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": ".container"
+            }
+          ]
+        }
+      },
+      {
+        "name": "implicit div dengan id",
+        "input": "#header",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "#header"
+            }
+          ]
+        }
+      },
+      {
+        "name": "void element dengan class",
+        "input": "hr.divider",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "hr.divider"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tag dengan text dan children",
+        "input": "div Parent text\n  p Child",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div",
+              "text": "Parent text",
+              "children": [
+                {
+                  "name": "p",
+                  "text": "Child"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "dedent ke parent setelah sibling dalam",
+        "input": "ul\n  li Item A\n  li\n    ul\n      li Sub A\n      li Sub B\n  li Item B",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "children": [
+                {
+                  "name": "li",
+                  "text": "Item A"
+                },
+                {
+                  "name": "li"
+                },
+                {
+                  "name": "li",
+                  "text": "Item B"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "root sibling setelah nested block",
+        "input": "div\n  p Child\nfooter Note",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "div"
+            },
+            {
+              "name": "footer",
+              "text": "Note"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tab indentation didukung",
+        "input": "div\n\tp Tabbed",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "children": [
+                {
+                  "name": "p",
+                  "text": "Tabbed"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "blank line di tengah",
+        "input": "div\n\n  p After blank",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "children": [
+                {
+                  "name": "p",
+                  "text": "After blank"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-pug] empty input error",
+        "input": "",
+        "expected": "err"
+      },
+      {
+        "name": "kombinasi class id dan text",
+        "input": "button.btn.primary#submit Click me",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "button.btn.primary#submit",
+              "text": "Click me"
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut sederhana",
+        "input": "a(href=\"/link\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "a",
+              "attrs": {
+                "tag": "Attrs",
+                "attrs": [
+                  {
+                    "name": "href",
+                    "value": "/link"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut ganda",
+        "input": "a(href=\"/link\" target=\"_blank\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "href"
+                  },
+                  {
+                    "name": "target",
+                    "value": "_blank"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut di void element",
+        "input": "input(type=\"text\" name=\"user\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "input",
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "type"
+                  },
+                  {
+                    "name": "name"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "boolean attribute (tanpa value)",
+        "input": "input(disabled)",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "disabled",
+                    "value": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut dengan dash di nama",
+        "input": "div(data-id=\"5\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "data-id",
+                    "value": "5"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut dengan spasi di value",
+        "input": "div(class=\"foo bar\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "value": "foo bar"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut dengan text",
+        "input": "a(href=\"/link\") Click me",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "href"
+                  }
+                ]
+              },
+              "text": "Click me"
+            }
+          ]
+        }
+      },
+      {
+        "name": "shorthand class + atribut",
+        "input": "a.btn(href=\"/x\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "a.btn",
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "href"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "atribut dengan children",
+        "input": "div(data-x=\"1\")\n  p Hi",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "name": "data-x"
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "name": "p",
+                  "text": "Hi"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "escaping di attribute value",
+        "input": "a(href=\"/search?q=a&b=1\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "value": "/search?q=a&b=1"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "attribute value kosong",
+        "input": "input(value=\"\")",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "attrs": {
+                "attrs": [
+                  {
+                    "value": ""
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "template HTML sederhana",
+        "input": "html\n  head\n    title My Site\n  body\n    div.container\n      h1 Welcome\n      p Hello World",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "name": "html",
+              "children": [
+                {
+                  "name": "head",
+                  "children": [
+                    {
+                      "name": "title",
+                      "text": "My Site"
+                    }
+                  ]
+                },
+                {
+                  "name": "body",
+                  "children": [
+                    {
+                      "name": "div.container",
+                      "children": [
+                        {
+                          "name": "h1"
+                        },
+                        {
+                          "name": "p"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "deep nesting 5 level",
+        "input": "div\n  section\n    article\n      aside\n        p Deepest",
+        "expected": {
+          "tag": "Pug",
+          "elements": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [
+                            {
+                              "name": "p",
+                              "text": "Deepest"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "mini-python",
+    "grammar": "Program = Newlines* statements:(^Statement Newlines*)+ Newlines* _ -> Program\nStatement = Assignment / Print / If / While\nAssignment = name:Id _ \"=\" _ expression:Expression -> Assign\nPrint = \"print\" _ \"(\" _ argument:Expression? _ \")\" -> Print\nIf = \"if\" __ expression:Expression _ \":\" _ block:Block elifs:Elif* else:Else? -> If\nElif = Newlines _ \"elif\" __ expression:Expression _ \":\" _ block:Block -> Elif\nElse = Newlines _ \"else\" _ \":\" _ block:Block -> Else\nWhile = \"while\" __ expression:Expression _ \":\" _ block:Block -> While\nBlock = statements:>> Statement <<+ -> Block\nExpression = Comparison\nComparison = left:Comparison _ \"==\" _ right:Additive -> Eq / left:Comparison _ \"!=\" _ right:Additive -> Neq / left:Comparison _ \"<\" _ right:Additive -> Lt / left:Comparison _ \">\" _ right:Additive -> Gt / left:Comparison _ \"<=\" _ right:Additive -> Lte / left:Comparison _ \">=\" _ right:Additive -> Gte / Additive\nAdditive = left:Additive _ \"+\" _ right:Multiplicative -> Add / left:Additive _ \"-\" _ right:Multiplicative -> Sub / Multiplicative\nMultiplicative = left:Multiplicative _ \"*\" _ right:Unary -> Mul / left:Multiplicative _ \"/\" _ right:Unary -> Div / left:Multiplicative _ \"%\" _ right:Unary -> Mod / Unary\nUnary = \"-\" _ expression:Unary -> Negate / Primary\nPrimary = Number / String / True / False / Id / \"(\" _ ^Expression _ \")\"\nNumber = value:NumberText -> Number\nNumberText = \"0\" / $( [1-9] [0-9]* )\nString = value:(\"\\\"\" ^$(NotQuote*) \"\\\"\") -> String\nNotQuote = ~\"\\\"\"\nId = value:$([a-z_] [a-z0-9_]*) -> Id\nTrue = \"True\" -> True\nFalse = \"False\" -> False\nNewlines = [\\r\\n]+\n_ = Space*\n__ = Space+\nSpace = [\\t ]+",
+    "tests": [
+      {
+        "name": "[mini-python] Program root",
+        "input": "print(1)",
+        "expected": {
+          "tag": "Program"
+        }
+      },
+      {
+        "name": "Print with number",
+        "input": "print(1)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Print",
+              "argument": {
+                "tag": "Number",
+                "value": "1"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Print with string",
+        "input": "print(\"hello\")",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Print",
+              "argument": {
+                "tag": "String",
+                "value": "hello"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Print tanpa argument",
+        "input": "print()",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Print"
+            }
+          ]
+        }
+      },
+      {
+        "name": "Assignment",
+        "input": "x = 5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "Assign",
+              "name": {
+                "value": "x"
+              },
+              "expression": {
+                "tag": "Number",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Id expression",
+        "input": "y = x",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Id",
+                "value": "x"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] Add expression",
+        "input": "x = 1 + 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Add",
+                "left": {
+                  "value": "1"
+                },
+                "right": {
+                  "value": "2"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] Arithmetic operators #1",
+        "input": "x = 5 - 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Sub"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] Arithmetic operators #2",
+        "input": "x = 3 * 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Mul"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] Arithmetic operators #3",
+        "input": "x = 10 / 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Div"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] Arithmetic operators #4",
+        "input": "x = 7 % 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Mod"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] operator precedence",
+        "input": "x = 1 + 2 * 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Add",
+                "right": {
+                  "tag": "Mul"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] parentheses override precedence",
+        "input": "x = (1 + 2) * 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Mul",
+                "left": {
+                  "tag": "Add"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] left associative subtraction",
+        "input": "x = 10 - 3 - 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Sub",
+                "left": {
+                  "tag": "Sub"
+                },
+                "right": {
+                  "value": "2"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] unary minus",
+        "input": "x = -5",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Negate",
+                "expression": {
+                  "tag": "Number",
+                  "value": "5"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "true literal",
+        "input": "x = True",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "True"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "false literal",
+        "input": "x = False",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "False"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] comparison operators #1",
+        "input": "x = 1 == 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Eq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] comparison operators #2",
+        "input": "x = 1 != 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Neq"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] comparison operators #3",
+        "input": "x = 1 < 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Lt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] comparison operators #4",
+        "input": "x = 1 > 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Gt"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "comparison operators #5",
+        "input": "x = 3 <= 3",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Lte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "comparison operators #6",
+        "input": "x = 3 >= 4",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Gte"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] IfStmt",
+        "input": "if True:\n  x = 1",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "If",
+              "expression": {
+                "tag": "True"
+              },
+              "block": {
+                "statements": [
+                  {
+                    "tag": "Assign"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] IfStmt with Else",
+        "input": "if True:\n  x = 1\nelse:\n  x = 2",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "If",
+              "else": {
+                "tag": "Else",
+                "block": {
+                  "statements": [
+                    {
+                      "tag": "Assign"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt with Elif",
+        "input": "if x == 1:\n  print(\"one\")\nelif x == 2:\n  print(\"two\")\nelse:\n  print(\"other\")",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "If",
+              "elifs": [
+                {
+                  "tag": "Elif",
+                  "expression": {
+                    "tag": "Eq"
+                  }
+                }
+              ],
+              "else": {
+                "tag": "Else"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "IfStmt tanpa Else",
+        "input": "if x > 3:\n  print(\"big\")",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "If"
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] While loop",
+        "input": "while i < 3:\n  print(i)\n  i = i + 1",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "While",
+              "expression": {
+                "tag": "Lt"
+              },
+              "block": {
+                "statements": [
+                  {
+                    "tag": "Print"
+                  },
+                  {
+                    "tag": "Assign"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "nested if",
+        "input": "if x > 5:\n  if x > 8:\n    print(\"big\")\n  else:\n    print(\"medium\")\nelse:\n  print(\"small\")",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "tag": "If",
+              "else": {}
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] multiple statements",
+        "input": "x = 1\ny = 2\nprint(x + y)",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {},
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "name": "string concatenation via Add",
+        "input": "x = \"foo\" + \"bar\"",
+        "expected": {
+          "tag": "Program",
+          "statements": [
+            {
+              "expression": {
+                "tag": "Add"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[mini-python] syntax error",
+        "input": "x =",
+        "expected": "err"
+      },
+      {
+        "name": "[mini-python] empty input error",
+        "input": "",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "list",
+    "grammar": "List = \"[\" _ items:Item { 1 ; _ \",\" _ } _ \",\"? _ \"]\" -> List\nItem = value:Int -> Item\nInt = value:Number -> Int\nNumber = \"0\" / $( [1-9] [0-9]* )\n_ = Space*\nSpace = [ \\t\\r\\n]+",
+    "tests": [
+      {
+        "name": "List root",
+        "input": "[0, 1, 3]",
+        "expected": {
+          "tag": "List",
+          "items": [
+            {
+              "tag": "Item",
+              "value": {
+                "tag": "Int",
+                "value": "0"
+              }
+            },
+            {
+              "tag": "Item",
+              "value": {
+                "tag": "Int",
+                "value": "1"
+              }
+            },
+            {
+              "tag": "Item",
+              "value": {
+                "tag": "Int",
+                "value": "3"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "trailing comma dibolehkan",
+        "input": "[0, 1, ]",
+        "expected": {
+          "tag": "List",
+          "items": [
+            {
+              "value": {
+                "value": "0"
+              }
+            },
+            {
+              "value": {
+                "value": "1"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "trailing comma tanpa spasi",
+        "input": "[0, 1,]",
+        "expected": {
+          "tag": "List",
+          "items": [
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "name": "item tunggal",
+        "input": "[7]",
+        "expected": {
+          "tag": "List",
+          "items": [
+            {
+              "value": {
+                "value": "7"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "angka besar",
+        "input": "[999]",
+        "expected": {
+          "tag": "List",
+          "items": [
+            {
+              "value": {
+                "value": "999"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "tanpa isi",
+        "input": "[]",
+        "expected": "err"
+      },
+      {
+        "name": "hanya koma",
+        "input": "[,]",
+        "expected": "err"
+      },
+      {
+        "name": "koma ganda di tengah",
+        "input": "[0, , 1]",
+        "expected": "err"
+      },
+      {
+        "name": "koma ganda setelah trailing",
+        "input": "[0, 1, ,]",
+        "expected": "err"
+      }
+    ]
+  },
+  {
+    "name": "Self host",
+    "grammar": "Grammar = _ rules:Rule { 1 ; _ } _ -> Grammar\nRule = name:Id _ \"=\" _ expression:Expression -> Rule\nExpression = Choice\nChoice = expressions:Node { 2 ; _ \"/\" _ } -> Choice / Node\nNode = expression:Sequence _ \"->\" _ name:Id -> Node / Sequence\nSequence = expressions:Select { 2 ; __ } -> Sequence / Select\nSelect = Field / Extract / Prefix\nField = name:Id _ \":\" _ expression:Prefix -> Field\nExtract = \"^\" _ expression:Prefix -> Extract\nPrefix = Text / And / Not / Postfix\nText = \"$\" _ expression:Postfix -> Text\nAnd = \"&\" _ expression:Postfix -> And\nNot = \"!\" _ expression:Postfix -> Not\nPostfix = Optional / Zero / One / Repeat / Primary\nOptional = expression:Primary _ \"?\" -> Optional\nZero = expression:Primary _ \"*\" -> Zero\nOne = expression:Primary _ \"+\" -> One\nRepeat = expression:Primary _ \"{\" _ min:Number max:RepeatMax? separator:RepeatSeparator? _ \"}\" -> Repeat\nRepeatMax =  _ \",\" _ ^Number\nRepeatSeparator =  _ \";\" _ ^Expression\nNumber = \"0\" / $( [1-9] [0-9]* )\nPrimary = Reference / Except / Indent / Class / Literal / Any / Group\nExcept = \"~\" _ expression:Primary -> Except\nIndent = \">>\" _ expression:Expression _ \"<<\" -> Indent\nGroup = \"(\" _ ^Expression _ \")\"\nReference = name:Id !( _ \"=\" ) -> Reference\nId = $( [a-z_]i [a-z0-9_]i* )\nClass = \"[\" negation:\"^\"? predicates:ClassItem* \"]\" insensitive:\"i\"? -> Class\nClassItem = Between / Equal\nBetween = min:PredicateItem \"-\" max:PredicateItem -> Between\nEqual = value:PredicateItem -> Equal\nPredicateItem = $( \"\\\\\" . ) / ~\"]\"\nLiteral = value:String insensitive:\"i\"? -> Literal\nString = $( \"\\\"\" ^$StringItem* \"\\\"\" )\nStringItem = \"\\\\\" . / ~\"\\\"\"\nAny = \".\" -> Any\n_ = Space*\n__ = Space+\nSpace = WhiteSpace / SingleLineComment / MultiLineComment\nWhiteSpace = [ \\t\\r\\n]+\nSingleLineComment = \"//\" ~[\\r\\n]*\nMultiLineComment = \"/*\" ~\"*/\"* \"*/\"",
+    "tests": [
+      {
+        "name": "Self host",
+        "input": "<packrat.packrat>",
+        "expected": {
+          "_note": "parse grammar equals packratGrammar constant"
+        }
+      }
+    ]
+  }
+]
