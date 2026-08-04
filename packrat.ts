@@ -36,7 +36,7 @@ type ParseOptions = { file?: string, startRule?: string }
 
 type ResolvedGrammar = { rules: ResolvedRule[] }
 
-type ResolvedRule = { name: string, expression: ResolvedExpression, resultCount: number }
+type ResolvedRule = { name: string, expression: ResolvedExpression, resultCount: number, isLeftRecursive: boolean }
 
 type ResolvedExpression =
   | { tag: 'Choice', expressions: ResolvedExpression[], result: string, saved: string }
@@ -65,6 +65,7 @@ class ParseError extends Error {
 }
 
 const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
+  const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
   return {
     ...grammar,
     rules: grammar.rules.map(rule => {
@@ -78,6 +79,34 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
       const nextResults = () => `results${++resultsCount}`
       const nextCount = () => `count${++countCount}`
       const nextChar = () => `char${++charCount}`
+      const visited = new Set<string>()
+      const isLeftRecursive = (expression: Expression): boolean => {
+        switch (expression.tag) {
+          case 'Choice':
+            return expression.expressions.some(isLeftRecursive)
+          case 'Node':
+            return isLeftRecursive(expression.expression)
+          case 'Sequence':
+            return isLeftRecursive(expression.expressions[0]!)
+          case 'Field': case 'Extract': case 'Text': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Repeat':
+            return isLeftRecursive(expression.expression)
+          case 'Reference':
+            if (expression.name === rule.name) {
+              return true
+            }
+            if (visited.has(expression.name)) {
+              return false
+            }
+            visited.add(expression.name)
+            return isLeftRecursive(rules[expression.name]!)
+          case 'Except':
+            return isLeftRecursive(expression.expression)
+          case 'Indent':
+            return isLeftRecursive(expression.expression)
+          case 'Class': case 'Literal': case 'Any':
+            return false
+        }
+      }
       const resolveExpression = (expression: Expression): ResolvedExpression => {
         switch (expression.tag) {
           case 'Choice':
@@ -116,7 +145,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             return { ...expression, result: nextResult() }
         }
       }
-      return { ...rule, expression: resolveExpression(rule.expression), resultCount }
+      return { ...rule, expression: resolveExpression(rule.expression), resultCount, isLeftRecursive: isLeftRecursive(rule.expression) }
     })
   }
 }
@@ -136,8 +165,8 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
 
 const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.expression)
 
-const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions = {}) => {
-  const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule.expression]))
+const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
+  const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule]))
   const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], result: Ok | Err, growing: boolean }>]))
   const stack = [] as { key: string, name: string, involved: Set<string> | null }[]
   const err = Symbol('err')
@@ -203,7 +232,7 @@ const evaluateGrammar = (grammar: Grammar, input: string, options: ParseOptions 
     memo[key] = { offset, indent: [...indent], result: result, growing: true }
     while (true) {
       offset = start
-      const attempt = evaluateExpression(rules[name]!)
+      const attempt = evaluateExpression(rules[name]!.expression)
       if (attempt === err) {
         break
       }
@@ -2208,10 +2237,12 @@ const packratGrammar: Grammar = {
   ]
 }
 
+const resolvedPackratGrammar = resolveGrammar(packratGrammar)
+
 const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Ok => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
-    const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, grammarText))))
+    const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText))))
     return (input: string, options: ParseOptions = {}) => {
       const php = `<?php
       error_reporting(E_ALL);
@@ -2236,7 +2267,7 @@ JSON
     }
   }
   if (import.meta.env.MODE === 'js') {
-    const parser = emitJs(resolveGrammar(parseGrammar(evaluateGrammar(packratGrammar, grammarText))))
+    const parser = emitJs(resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText))))
     return (input: string, options: ParseOptions = {}) => {
       const js = `
         ${parser}
@@ -2255,7 +2286,7 @@ JSON
       return result
     }
   }
-  const grammar = parseGrammar(evaluateGrammar(packratGrammar, grammarText))
+  const grammar = resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText)))
   return (input: string, options: ParseOptions = {}) => {
     return evaluateGrammar(grammar, input, options)
   }
