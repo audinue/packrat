@@ -207,7 +207,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
   }
   const evaluateRule = (name: string): Ok | Err => {
     const start = offset
-    const key = `${start}@${indent}`
+    const key = start + '@' + indent.join(',')
     const memo = cache[name]!
     const entry = memo[key]
     if (entry) {
@@ -216,23 +216,31 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         if (index !== -1) {
           const owner = stack[index]!
           owner.involved ??= new Set()
-          for (const e of stack.slice(index + 1)) {
-            owner.involved.add(e.name)
+          for (let i = index + 1; i < stack.length; i++) {
+            owner.involved.add(stack[i]!.name)
           }
         }
       }
       offset = entry.offset
-      indent = [...entry.indent]
+      indent = entry.indent.slice()
       return entry.result
+    }
+    const rule = rules[name]!
+    if (!rule.isLeftRecursive) {
+      const result = evaluateExpression(rule.expression)
+      if (result !== err) {
+        memo[key] = { offset, indent: indent.slice(), result, growing: false }
+      }
+      return result
     }
     const frame = { key, name, involved: null }
     stack.push(frame)
     let result: Ok | Err = err
     let endPos = start
-    memo[key] = { offset, indent: [...indent], result: result, growing: true }
+    memo[key] = { offset: start, indent: indent.slice(), result, growing: true }
     while (true) {
       offset = start
-      const attempt = evaluateExpression(rules[name]!.expression)
+      const attempt = evaluateExpression(rule.expression)
       if (attempt === err) {
         break
       }
@@ -242,13 +250,13 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
       result = attempt
       endPos = attemptEnd
-      memo[key] = { offset: endPos, indent: [...indent], result: result, growing: true }
+      memo[key] = { offset: endPos, indent: indent.slice(), result, growing: true }
     }
     stack.pop()
     if (stack.some(e => e.involved?.has(name))) {
       delete memo[key]
     } else {
-      memo[key] = { offset: endPos, indent: [...indent], result: result, growing: false }
+      memo[key] = { offset: endPos, indent: indent.slice(), result, growing: false }
     }
     offset = endPos
     return result
