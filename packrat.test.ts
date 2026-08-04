@@ -242,6 +242,66 @@ describe('packrat', () => {
     expect(() => parse('a\nb')).toThrow()
   })
 
+  test('Indent auto detect 2 spaces', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    expect(parse('a\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+  })
+
+  test('Indent auto detect 4 spaces', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    expect(parse('a\n    b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+  })
+
+  test('Indent auto detect tab', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    expect(parse('a\n\tb')).toMatchObject({ tag: 'Outer', inner: 'b' })
+  })
+
+  test('Indent nested 2 levels with 2 spaces unit', () => {
+    const parse = packrat`
+      Block = "a" >> "b" >> "c" << << -> Block
+    `
+    const result = parse('a\n  b\n    c')
+    expect(result).toMatchObject({ tag: 'Block' })
+  })
+
+  test('Indent nested 2 levels with 4 spaces unit', () => {
+    const parse = packrat`
+      Block = "a" >> "b" >> "c" << << -> Block
+    `
+    const result = parse('a\n    b\n        c')
+    expect(result).toMatchObject({ tag: 'Block' })
+  })
+
+  test('Indent nested 2 levels with tab unit', () => {
+    const parse = packrat`
+      Block = "a" >> "b" >> "c" << << -> Block
+    `
+    const result = parse('a\n\tb\n\t\tc')
+    expect(result).toMatchObject({ tag: 'Block' })
+  })
+
+  test('Indent fails on non multiple', () => {
+    const parse = packrat`
+      Block = "a" >> "b" >> "c" << << -> Block
+    `
+    expect(() => parse('a\n  b\n     c')).toThrow()
+    expect(parse('a\n  b\n    c')).toMatchObject({ tag: 'Block' })
+  })
+
+  test('Indent with blank lines', () => {
+    const parse = packrat`
+      Outer = "a" inner:>> "b" << -> Outer
+    `
+    expect(parse('a\n\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+  })
+
   test('Self host', () => {
     const input = readFileSync(`${import.meta.dir}/packrat.packrat`, 'utf-8')
     const parse = packrat(input)

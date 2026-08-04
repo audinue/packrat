@@ -124,8 +124,9 @@ footer Note`
     expect(result).toBe('<div><p>Child</p></div><footer>Note</footer>')
   })
 
-  test('tab indentation tidak didukung (hanya spasi)', () => {
-    expect(() => pug('div\n\tp Tabbed')).toThrow()
+  test('tab indentation didukung (deteksi otomatis)', () => {
+    const result = pug('div\n\tp Tabbed')
+    expect(result).toBe('<div><p>Tabbed</p></div>')
   })
 
   test('blank line di tengah', () => {

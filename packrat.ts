@@ -167,12 +167,13 @@ const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.express
 
 const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule]))
-  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], result: Ok | Err, growing: boolean }>]))
+  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], indentSize: number | undefined, result: Ok | Err, growing: boolean }>]))
   const stack = [] as { key: string, name: string, involved: Set<string> | null }[]
   const err = Symbol('err')
   type Err = typeof err
   let offset = 0
   let indent = [0]
+  let indentSize: number | undefined
   const getLocation = (offset: number) => {
     let line = 1
     let column = 1
@@ -223,13 +224,14 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
       offset = entry.offset
       indent = entry.indent.slice()
+      indentSize = entry.indentSize
       return entry.result
     }
     const rule = rules[name]!
     if (!rule.isLeftRecursive) {
       const result = evaluateExpression(rule.expression)
       if (result !== err) {
-        memo[key] = { offset, indent: indent.slice(), result, growing: false }
+        memo[key] = { offset, indent: indent.slice(), indentSize, result, growing: false }
       }
       return result
     }
@@ -237,7 +239,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     stack.push(frame)
     let result: Ok | Err = err
     let endPos = start
-    memo[key] = { offset: start, indent: indent.slice(), result, growing: true }
+    memo[key] = { offset: start, indent: indent.slice(), indentSize, result, growing: true }
     while (true) {
       offset = start
       const attempt = evaluateExpression(rule.expression)
@@ -250,13 +252,13 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
       result = attempt
       endPos = attemptEnd
-      memo[key] = { offset: endPos, indent: indent.slice(), result, growing: true }
+      memo[key] = { offset: endPos, indent: indent.slice(), indentSize, result, growing: true }
     }
     stack.pop()
     if (stack.some(e => e.involved?.has(name))) {
       delete memo[key]
     } else {
-      memo[key] = { offset: endPos, indent: indent.slice(), result, growing: false }
+      memo[key] = { offset: endPos, indent: indent.slice(), indentSize, result, growing: false }
     }
     offset = endPos
     return result
@@ -447,7 +449,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         }
         while (offset < input.length) {
           let scan = offset
-          while (scan < input.length && input.charAt(scan) === ' ') {
+          while (scan < input.length && (input.charAt(scan) === ' ' || input.charAt(scan) === '\t')) {
             scan++
           }
           if (scan < input.length && (input.charAt(scan) === '\n' || input.charAt(scan) === '\r')) {
@@ -460,16 +462,29 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
           break
         }
         const saved = offset
-        while (offset < input.length && input.charAt(offset) === ' ') {
+        while (offset < input.length && (input.charAt(offset) === ' ' || input.charAt(offset) === '\t')) {
           offset++
         }
         const next = offset - saved
-        if (next <= indent[indent.length - 1]!) {
+        if (indentSize === undefined) {
+          if (next === 0) {
+            return err
+          }
+          indentSize = next
+        }
+        if (next % indentSize !== 0) {
           return err
         }
-        indent.push(next)
+        const nextLevel = next / indentSize
+        if (nextLevel <= indent[indent.length - 1]!) {
+          return err
+        }
+        indent.push(nextLevel)
         const result = evaluateExpression(expression.expression)
         indent.pop()
+        if (indent.length === 1) {
+          indentSize = undefined
+        }
         return result
       }
       case 'Class': {
@@ -740,7 +755,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
               }
               while (offset < input.length) {
                 let scan = offset
-                while (scan < input.length && input.charAt(scan) === ' ') {
+                while (scan < input.length && (input.charAt(scan) === ' ' || input.charAt(scan) === '\\t')) {
                   scan++
                 }
                 if (scan < input.length && (input.charAt(scan) === '\\n' || input.charAt(scan) === '\\r')) {
@@ -753,17 +768,32 @@ const emitJs = (grammar: ResolvedGrammar) => {
                 break
               }
               const ${expression.saved} = offset
-              while (offset < input.length && input.charAt(offset) === ' ') {
+              while (offset < input.length && (input.charAt(offset) === ' ' || input.charAt(offset) === '\\t')) {
                 offset++
               }
               const next = offset - ${expression.saved}
-              if (next > indent[indent.length - 1]) {
-                indent.push(next)
-                ${emitExpression(expression.expression)}
-                indent.pop()
-                ${expression.result} = ${expression.expression.result}
-              } else {
+              if (next === 0) {
                 ${expression.result} = err
+              } else {
+        if (indentSize === undefined) {
+                  indentSize = next
+                }
+                if (next % indentSize !== 0) {
+                  ${expression.result} = err
+                } else {
+                  const nextLevel = next / indentSize
+                  if (nextLevel > indent[indent.length - 1]) {
+                    indent.push(nextLevel)
+                    ${emitExpression(expression.expression)}
+                    indent.pop()
+                    if (indent.length === 1) {
+                      indentSize = undefined
+                    }
+                    ${expression.result} = ${expression.expression.result}
+                  } else {
+                    ${expression.result} = err
+                  }
+                }
               }
             } else {
               ${expression.result} = err
@@ -848,12 +878,13 @@ const emitJs = (grammar: ResolvedGrammar) => {
           if (entry) {
             offset = entry.offset
             indent = entry.indent.slice()
+            indentSize = entry.indentSize
             return entry.result
           }
           let ${results}
           ${emitExpression(rule.expression)}
           if (${rule.expression.result} !== err) {
-            cache.${rule.name}[key] = { offset, indent: indent.slice(), result: ${rule.expression.result} }
+            cache.${rule.name}[key] = { offset, indent: indent.slice(), indentSize, result: ${rule.expression.result} }
           }
           return ${rule.expression.result}
         }
@@ -878,6 +909,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
           }
           offset = entry.offset
           indent = entry.indent.slice()
+          indentSize = entry.indentSize
           return entry.result
         }
         let ${results}
@@ -885,7 +917,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         stack.push(frame)
         let result = err
         let endPos = start
-        memo[key] = { offset: start, indent: indent.slice(), result, growing: true }
+        memo[key] = { offset: start, indent: indent.slice(), indentSize, result, growing: true }
         while (true) {
           offset = start
           ${emitExpression(rule.expression)}
@@ -898,13 +930,13 @@ const emitJs = (grammar: ResolvedGrammar) => {
           }
           result = ${rule.expression.result}
           endPos = attemptEnd
-          memo[key] = { offset: endPos, indent: indent.slice(), result, growing: true }
+          memo[key] = { offset: endPos, indent: indent.slice(), indentSize, result, growing: true }
         }
         stack.pop()
         if (stack.some(e => e.involved?.has('${rule.name}'))) {
           delete memo[key]
         } else {
-          memo[key] = { offset: endPos, indent: indent.slice(), result, growing: false }
+          memo[key] = { offset: endPos, indent: indent.slice(), indentSize, result, growing: false }
         }
         offset = endPos
         return result
@@ -959,6 +991,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       }
       let offset = 0
       let indent = [0]
+      let indentSize
       ${rules}
       const result = rules[options.startRule ?? ${JSON.stringify(grammar.rules[0]!.name)}]()
       if (result === err || offset < input.length) {
@@ -1184,7 +1217,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
               }
               while ($this->offset < strlen($this->input)) {
                 $scan = $this->offset;
-                while ($scan < strlen($this->input) && $this->input[$scan] === ' ') {
+                while ($scan < strlen($this->input) && ($this->input[$scan] === ' ' || $this->input[$scan] === "\\t")) {
                   $scan++;
                 }
                 if ($scan < strlen($this->input) && ($this->input[$scan] === "\\n" || $this->input[$scan] === "\\r")) {
@@ -1197,17 +1230,32 @@ const emitPhp = (grammar: ResolvedGrammar) => {
                 break;
               }
               $${expression.saved} = $this->offset;
-              while ($this->offset < strlen($this->input) && $this->input[$this->offset] === ' ') {
+              while ($this->offset < strlen($this->input) && ($this->input[$this->offset] === ' ' || $this->input[$this->offset] === "\\t")) {
                 $this->offset++;
               }
               $next = $this->offset - $${expression.saved};
-              if ($next > $this->indent[count($this->indent) - 1]) {
-                array_push($this->indent, $next);
-                ${emitExpression(expression.expression)}
-                array_pop($this->indent);
-                $${expression.result} = $${expression.expression.result};
-              } else {
+              if ($next === 0) {
                 $${expression.result} = $this->err;
+              } else {
+                if ($this->indentSize === null) {
+                  $this->indentSize = $next;
+                }
+                if ($next % $this->indentSize !== 0) {
+                  $${expression.result} = $this->err;
+                } else {
+                  $nextLevel = $next / $this->indentSize;
+                  if ($nextLevel > $this->indent[count($this->indent) - 1]) {
+                    array_push($this->indent, $nextLevel);
+                    ${emitExpression(expression.expression)}
+                    array_pop($this->indent);
+                    if (count($this->indent) === 1) {
+                      $this->indentSize = null;
+                    }
+                    $${expression.result} = $${expression.expression.result};
+                  } else {
+                    $${expression.result} = $this->err;
+                  }
+                }
               }
             } else {
               $${expression.result} = $this->err;
@@ -1274,11 +1322,12 @@ const emitPhp = (grammar: ResolvedGrammar) => {
           if ($entry) {
             $this->offset = $entry['offset'];
             $this->indent = $entry['indent'];
+            $this->indentSize = $entry['indentSize'];
             return $entry['result'];
           }
           ${emitExpression(rule.expression)}
           if ($${rule.expression.result} !== $this->err) {
-            $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'result' => $${rule.expression.result}];
+            $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $${rule.expression.result}];
           }
           return $${rule.expression.result};
         }
@@ -1303,13 +1352,14 @@ const emitPhp = (grammar: ResolvedGrammar) => {
           }
           $this->offset = $entry['offset'];
           $this->indent = $entry['indent'];
+          $this->indentSize = $entry['indentSize'];
           return $entry['result'];
         }
         $frame = ['key' => $key, 'name' => '${rule.name}', 'involved' => null];
         $this->stack[] = $frame;
         $result = $this->err;
         $endPos = $start;
-        $this->cache['${rule.name}'][$key] = ['offset' => $start, 'indent' => $this->indent, 'result' => $result, 'growing' => true];
+        $this->cache['${rule.name}'][$key] = ['offset' => $start, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $result, 'growing' => true];
         while (true) {
           $this->offset = $start;
           ${emitExpression(rule.expression)}
@@ -1322,7 +1372,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
           }
           $result = $${rule.expression.result};
           $endPos = $attemptEnd;
-          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'result' => $result, 'growing' => true];
+          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $result, 'growing' => true];
         }
         array_pop($this->stack);
         $deleteMemo = false;
@@ -1335,7 +1385,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
         if ($deleteMemo) {
           unset($this->cache['${rule.name}'][$key]);
         } else {
-          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'result' => $result, 'growing' => false];
+          $this->cache['${rule.name}'][$key] = ['offset' => $endPos, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $result, 'growing' => false];
         }
         $this->offset = $endPos;
         return $result;
@@ -1357,6 +1407,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       private $file;
       private $offset;
       private $indent;
+      private $indentSize;
       private $cache;
       private $stack;
       function __construct() {
@@ -1399,6 +1450,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
         $this->file = $file;
         $this->offset = 0;
         $this->indent = [0];
+        $this->indentSize = null;
         $result = $this->{'parse' . ($startRule ?? '${grammar.rules[0]?.name}')}();
         if ($result === $this->err || $this->offset < strlen($input)) {
           $location = $this->getLocation($this->offset);
