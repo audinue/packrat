@@ -100,22 +100,21 @@ describe('packrat', () => {
     const parse = packrat`
       Node = a:"a" b:"b" -> Node
     `
-    const result = parse('ab') as any
-    expect(result.tag).toBe('Node')
-    expect(result.a).toBe('a')
-    expect(result.b).toBe('b')
-    expect(result.location.file).toBe('<unknown>')
-    expect(result.location.line).toBe(1)
-    expect(result.location.column).toBe(1)
+    const result = parse('ab')
+    expect(result).toMatchObject({
+      tag: 'Node',
+      a: 'a',
+      b: 'b',
+      location: { file: '<unknown>', line: 1, column: 1 },
+    })
   })
 
   test('Field', () => {
     const parse = packrat`
       Field = value:"a" -> Field
     `
-    const result = parse('a') as any
-    expect(result.tag).toBe('Field')
-    expect(result.value).toBe('a')
+    const result = parse('a')
+    expect(result).toMatchObject({ tag: 'Field', value: 'a' })
   })
 
   test('Extract single', () => {
@@ -222,7 +221,7 @@ describe('packrat', () => {
     const parse = packrat`
       Indent = >> "a" << -> Indent
     `
-    expect((parse('\n  a') as any).tag).toBe('Indent')
+    expect(parse('\n  a')).toMatchObject({ tag: 'Indent' })
     expect(() => parse('a')).toThrow()
     expect(() => parse('\na')).toThrow()
   })
@@ -231,9 +230,8 @@ describe('packrat', () => {
     const parse = packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    const result = parse('a\n  b') as any
-    expect(result.tag).toBe('Outer')
-    expect(result.inner).toBe('b')
+    const result = parse('a\n  b')
+    expect(result).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
   test('Indent nested same or lower fails', () => {

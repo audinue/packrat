@@ -4,8 +4,8 @@ import { runJs, parseJs } from './mini-js'
 describe('mini-js', () => {
   test('parseJs returns AST', () => {
     const ast = parseJs('console.log(`halo`)') as any
-    expect(ast.tag).toBe('Program')
-    expect(ast.statements.length).toBe(1)
+    expect(ast).toMatchObject({ tag: 'Program' })
+    expect(ast.statements).toHaveLength(1)
   })
 
   test('template literal dasar', () => {

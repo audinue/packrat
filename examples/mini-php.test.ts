@@ -2,11 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { runPhp, parsePhp } from './mini-php'
 
 describe('mini-php', () => {
-
   test('parsePhp returns AST', () => {
     const ast = parsePhp('<?php $x = 1; ?>') as any
-    expect(ast.tag).toBe('Program')
-    expect(ast.statements.length).toBe(1)
+    expect(ast).toMatchObject({ tag: 'Program' })
+    expect(ast.statements).toHaveLength(1)
   })
 
   test('tanpa tag <?php jadi teks biasa', () => {

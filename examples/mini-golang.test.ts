@@ -2,10 +2,10 @@ import { expect, test, describe } from 'bun:test'
 import { runGo, parseGo } from './mini-golang'
 
 describe('mini-golang', () => {
-
   test('parseGo returns AST', () => {
-    const ast = parseGo('x := 42')
-    expect(ast).toBeDefined()
+    const ast = parseGo('x := 42') as any
+    expect(ast).toMatchObject({ tag: 'Program' })
+    expect(ast.statements).toHaveLength(1)
   })
 
   test('var declaration', () => {
