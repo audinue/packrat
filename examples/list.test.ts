@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { parseList } from './list'
+import { packrat } from '../packrat'
+import { readFileSync } from 'node:fs'
+
+const grammarText = readFileSync(`${import.meta.dir}/list.packrat`, 'utf-8')
+const parseList = (source: string) => packrat(grammarText)(source)
 
 describe('list parser', () => {
   const ast = (src: string) => parseList(src) as any
@@ -16,24 +20,31 @@ describe('list parser', () => {
   })
 
   test('trailing comma dibolehkan', () => {
-    expect(ast('[0, 1, ]').items).toHaveLength(2)
     expect(ast('[0, 1, ]')).toMatchObject({
+      tag: 'List',
       items: [{ value: { value: '0' } }, { value: { value: '1' } }]
     })
   })
 
   test('trailing comma tanpa spasi', () => {
-    expect(ast('[0, 1,]').items).toHaveLength(2)
+    expect(ast('[0, 1,]')).toMatchObject({
+      tag: 'List',
+      items: [{}, {}]
+    })
   })
 
   test('item tunggal', () => {
     expect(ast('[7]')).toMatchObject({
+      tag: 'List',
       items: [{ value: { value: '7' } }]
     })
   })
 
   test('angka besar', () => {
-    expect(ast('[999]').items[0].value).toMatchObject({ value: '999' })
+    expect(ast('[999]')).toMatchObject({
+      tag: 'List',
+      items: [{ value: { value: '999' } }]
+    })
   })
 
   test('tanpa isi', () => {
