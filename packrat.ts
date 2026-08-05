@@ -29,9 +29,9 @@ type Predicate =
 
 type Location = { file: string, line: number, column: number, readonly preview: string, toString(): string }
 
-type Ok = null | string | Ok[] | { tag: string, readonly location: Location, [field: string]: Ok | Location }
+type Value = null | string | Value[] | { tag: string, readonly location: Location, [field: string]: Value | Location }
 
-type Node = Exclude<Ok, null | string | Ok[]>
+type Node = Exclude<Value, null | string | Value[]>
 
 type ParseOptions = { file?: string, startRule?: string }
 
@@ -167,7 +167,7 @@ const isNode = (value: unknown): value is Node => {
 }
 
 // SECTION: parseGrammar
-const parseGrammar = (value: Ok): Grammar => {
+const parseGrammar = (value: Value): Grammar => {
   if (!isNode(value)) {
     throw new Error()
   }
@@ -177,7 +177,7 @@ const parseGrammar = (value: Ok): Grammar => {
   if (!Array.isArray(value.rules)) {
     throw new Error('Invalid value')
   }
-  const parseExpression = (value: Ok): Expression => {
+  const parseExpression = (value: Value): Expression => {
     if (!isNode(value)) {
       throw new Error('Invalid value')
     }
@@ -288,7 +288,7 @@ const parseGrammar = (value: Ok): Grammar => {
 // SECTION: evaluateGrammar
 const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule]))
-  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], indentSize: number | undefined, result: Ok | Err, growing: boolean }>]))
+  const cache = Object.fromEntries(grammar.rules.map(rule => [rule.name, {} as Record<string, { offset: number, indent: number[], indentSize: number | undefined, result: Value | Err, growing: boolean }>]))
   const stack = [] as { key: string, name: string, involved: Set<string> | null }[]
   const err = Symbol('err')
   type Err = typeof err
@@ -327,7 +327,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
     }
   }
-  const evaluateRule = (name: string): Ok | Err => {
+  const evaluateRule = (name: string): Value | Err => {
     const start = offset
     const key = start + '@' + indent.join(',')
     const memo = cache[name]!
@@ -356,7 +356,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     }
     const frame = { key, name, involved: null }
     stack.push(frame)
-    let result: Ok | Err = err
+    let result: Value | Err = err
     let endPos = start
     memo[key] = { offset: start, indent: indent.slice(), indentSize, result, growing: true }
     while (true) {
@@ -382,7 +382,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     offset = endPos
     return result
   }
-  const evaluateExpression = (expression: ResolvedExpression): Ok | Err => {
+  const evaluateExpression = (expression: ResolvedExpression): Value | Err => {
     switch (expression.tag) {
       case 'Choice': {
         const saved = offset
@@ -418,7 +418,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
             for (let i = 0; i < expressions.length; i++) {
               const expression = expressions[i]!
               if (expression.tag === 'Field') {
-                node[expression.name] = (result as Ok[])[i]!
+                node[expression.name] = (result as Value[])[i]!
               }
             }
           }
@@ -426,8 +426,8 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         return node
       }
       case 'Sequence': {
-        const results: Ok[] = []
-        const extracted: Ok[] = []
+        const results: Value[] = []
+        const extracted: Value[] = []
         for (const e of expression.expressions) {
           const result = evaluateExpression(e)
           if (result === err) {
@@ -486,7 +486,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         return result
       }
       case 'Zero': {
-        const results: Ok[] = []
+        const results: Value[] = []
         while (true) {
           const saved = offset
           const result = evaluateExpression(expression.expression)
@@ -503,7 +503,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         if (result === err) {
           return err
         }
-        const results: Ok[] = [result]
+        const results: Value[] = [result]
         while (true) {
           const saved = offset
           const result = evaluateExpression(expression.expression)
@@ -516,7 +516,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         return results
       }
       case 'Repeat': {
-        const results: Ok[] = []
+        const results: Value[] = []
         const saved = offset
         let count = 0
         while (expression.max === undefined || count < expression.max) {
@@ -2415,7 +2415,7 @@ const packratGrammar: Grammar = {
 const resolvedPackratGrammar = resolveGrammar(packratGrammar)
 
 // SECTION: packrat
-const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Ok => {
+const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Value => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
     const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText))))
@@ -2468,4 +2468,4 @@ JSON
   }
 }
 
-export { evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, type Location, type Node, type Ok }
+export { evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, type Location, type Node, type Value as Ok }
