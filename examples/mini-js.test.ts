@@ -95,7 +95,7 @@ describe('mini-js parser', () => {
   test('FuncDecl with rest param', () => {
     expect(ast('function sum(...nums) { return nums }')).toMatchObject({
       tag: 'Program',
-      statements: [{ params: { tag: 'ParamList', params: { tag: 'RestParam', name: 'nums' } } }]
+      statements: [{ params: { tag: 'ParamList', params: [{ tag: 'RestParam', name: 'nums' }] } }]
     })
   })
 
@@ -139,20 +139,20 @@ describe('mini-js parser', () => {
   test('TemplateString dasar', () => {
     expect(ast('console.log(`halo`)')).toMatchObject({
       tag: 'Program',
-      statements: [{ expression: { tag: 'Chained', expression: { tag: 'CallExpr', args: { tag: 'ArgList', args: { tag: 'Chained', expression: { tag: 'TemplateString' } } } } } }]
+      statements: [{ expression: { tag: 'Chained', expression: { tag: 'CallExpr', args: { tag: 'ArgList', args: [{ tag: 'Chained', expression: { tag: 'TemplateString' } }] } } } }]
     })
   })
 
   test('TemplateString with interpolation', () => {
     expect(ast('console.log(`1 + 2 = ${1 + 2}`)')).toMatchObject({
       tag: 'Program',
-      statements: [{ expression: { tag: 'Chained', expression: { tag: 'CallExpr', args: { tag: 'ArgList', args: { tag: 'Chained', expression: { tag: 'TemplateString' } } } } } }]
+      statements: [{ expression: { tag: 'Chained', expression: { tag: 'CallExpr', args: { tag: 'ArgList', args: [{ tag: 'Chained', expression: { tag: 'TemplateString' } }] } } } }]
     })
   })
 
   test('TemplateString multi interpolation', () => {
     const a = ast('console.log(`${a} + ${b} = ${a + b}`)')
-    const tmpl = (a as any).statements[0].expression.expression.args.args.expression
+    const tmpl = (a as any).statements[0].expression.expression.args.args[0].expression
     expect(tmpl.parts.length).toBeGreaterThanOrEqual(5)
   })
 

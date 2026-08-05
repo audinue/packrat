@@ -214,7 +214,7 @@ describe('mini-golang parser', () => {
   test('FuncDecl single param', () => {
     expect(ast('func double(x: int) { return x * 2 }')).toMatchObject({
       tag: 'Program',
-      statements: [{ params: { tag: 'ParamList', params: { name: 'x' } } }]
+      statements: [{ params: { tag: 'ParamList', params: [{ name: 'x' }] } }]
     })
   })
 
@@ -251,7 +251,7 @@ describe('mini-golang parser', () => {
   test('CallExpr single arg', () => {
     expect(ast('println(x)')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'ExprStmt', expr: { tag: 'CallExpr', name: 'println', args: { tag: 'ArgList', args: { tag: 'Ident', name: 'x' } } } }]
+      statements: [{ tag: 'ExprStmt', expr: { tag: 'CallExpr', name: 'println', args: { tag: 'ArgList', args: [{ tag: 'Ident', name: 'x' }] } } }]
     })
   })
 

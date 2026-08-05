@@ -55,7 +55,7 @@ describe('mini-php parser', () => {
   test('Echo single arg', () => {
     expect(ast('<?php echo 42; ?>')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: { tag: 'Int', value: '42' } } }]
+      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: [{ tag: 'Int', value: '42' }] } }]
     })
   })
 
@@ -69,7 +69,7 @@ describe('mini-php parser', () => {
   test('Echo string single arg', () => {
     expect(ast('<?php echo "hello"; ?>')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: { tag: 'String' } } }]
+      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: [{ tag: 'String' }] } }]
     })
   })
 
@@ -80,14 +80,14 @@ describe('mini-php parser', () => {
   test('Echo shorthand <?=', () => {
     expect(ast('<?= 1 + 2 ?>')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: { tag: 'Add' } } }]
+      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: [{ tag: 'Add' }] } }]
     })
   })
 
   test('Echo shorthand string', () => {
     expect(ast('<?= "halo" ?>')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: { tag: 'String' } } }]
+      statements: [{ tag: 'Echo', args: { tag: 'ArgList', args: [{ tag: 'String' }] } }]
     })
   })
 

@@ -11,7 +11,7 @@ ForUpdate = name:Id _ "=" _ value:Expression -> Assign / Expression
 FuncDecl = "function" __ name:Id _ "(" _ params:ParamList? _ ")" _ "{" _ body:Statement { 0 ; _ } _ "}" -> FuncDecl
 ReturnStmt = "return" _ value:Expression? _ ";"? -> Return
 ExprStmt = expression:Expression _ ";"? -> ExprStmt
-ParamList = params:Param { 2 ; _ "," _ } -> ParamList / params:Param -> ParamList
+ParamList = params:Param { 1 ; _ "," _ } -> ParamList
 Param = "..." name:Id -> RestParam / name:Id -> Param
 Expression = OrExpr
 OrExpr = left:OrExpr _ "||" _ right:AndExpr -> Or / AndExpr
@@ -43,7 +43,7 @@ ArrayLit = "[" _ elements:ArgList? _ "]" -> ArrayLit
 Ident = name:Id -> Ident
 Id = $( [a-z_]i [a-z0-9_]i* )
 Group = "(" _ ^Expression _ ")"
-ArgList = args:Expression { 2 ; _ "," _ } -> ArgList / args:Expression -> ArgList
+ArgList = args:Expression { 1 ; _ "," _ } -> ArgList
 Number = "0" / $( [1-9] [0-9]* )
 Float = value:$( Number "." Number ) -> Float
 Int = value:Number -> Int
