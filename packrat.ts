@@ -204,38 +204,40 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             return false
         }
       }
+      const typeCache = new Map<string, Type>()
       const resolveExpression = (expression: Expression): ResolvedExpression => {
+        const type = getExpressionType(expression, typeCache)
         switch (expression.tag) {
           case 'Choice':
-            return { ...expression, type: getExpressionType(expression), expressions: expression.expressions.map(resolveExpression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type, expressions: expression.expressions.map(resolveExpression), result: nextResult(), saved: nextSaved() }
           case 'Node':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Sequence':
-            return { ...expression, type: getExpressionType(expression), expressions: expression.expressions.map(resolveExpression), result: nextResult() }
+            return { ...expression, type, expressions: expression.expressions.map(resolveExpression), result: nextResult() }
           case 'Field':
           case 'Extract':
             const e = resolveExpression(expression.expression)
-            return { ...expression, type: getExpressionType(expression), expression: e, result: e.result }
+            return { ...expression, type, expression: e, result: e.result }
           case 'Text':
           case 'And':
           case 'Not':
           case 'Optional':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Zero':
           case 'One':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
           case 'Repeat':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator), result: nextResult(), saved1: nextSaved(), saved2: nextSaved(), count: nextCount(), results: nextResults() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator), result: nextResult(), saved1: nextSaved(), saved2: nextSaved(), count: nextCount(), results: nextResults() }
           case 'Reference':
-            return { ...expression, type: getExpressionType(expression), result: nextResult() }
+            return { ...expression, type, result: nextResult() }
           case 'Except':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Indent':
-            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), char: nextChar() }
+            return { ...expression, type, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), char: nextChar() }
           case 'Class':
           case 'Literal':
           case 'Any':
-            return { ...expression, type: getExpressionType(expression), result: nextResult() }
+            return { ...expression, type, result: nextResult() }
         }
       }
       const expression = resolveExpression(rule.expression)
@@ -2511,12 +2513,22 @@ const packratGrammar: Grammar = {
 }
 
 const resolvedPackratGrammar = resolveGrammar(packratGrammar)
+const grammarCache = new Map<string, ResolvedGrammar>()
+
+const getResolvedGrammar = (grammarText: string): ResolvedGrammar => {
+  if (grammarCache.has(grammarText)) {
+    return grammarCache.get(grammarText)!
+  }
+  const grammar = resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText)))
+  grammarCache.set(grammarText, grammar)
+  return grammar
+}
 
 // SECTION: packrat
 const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Value => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
-    const parser = emitPhp(resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText))))
+    const parser = emitPhp(getResolvedGrammar(grammarText))
     return (input: string, options: ParseOptions = {}) => {
       const php = `<?php
       error_reporting(E_ALL);
@@ -2541,7 +2553,7 @@ JSON
     }
   }
   if (import.meta.env.MODE === 'js') {
-    const parser = emitJs(resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText))))
+    const parser = emitJs(getResolvedGrammar(grammarText))
     return (input: string, options: ParseOptions = {}) => {
       const js = `
         ${parser}
@@ -2560,7 +2572,7 @@ JSON
       return result
     }
   }
-  const grammar = resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText)))
+  const grammar = getResolvedGrammar(grammarText)
   return (input: string, options: ParseOptions = {}) => {
     return evaluateGrammar(grammar, input, options)
   }
@@ -2596,7 +2608,6 @@ const stringifyGrammarTypes = (grammar: ResolvedGrammar): string => {
   return grammar.rules.map(rule => `${rule.name}: ${stringifyType(rule.type)}`).join('\n')
 }
 
-console.log(stringifyGrammarTypes(resolvedPackratGrammar))
-
+// console.log(stringifyGrammarTypes(resolvedPackratGrammar))
 
 export { evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, type Location, type Node, type Value as Ok }
