@@ -1,0 +1,42 @@
+Grammar: Grammar
+Rule: Rule
+Expression: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Choice: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Node: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Sequence: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Select: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Field: Field
+Extract: Extract
+Prefix: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Text: Text
+And: And
+Not: Not
+Postfix: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Optional: Optional
+Zero: Zero
+One: One
+Repeat: Repeat
+RepeatMax: string
+RepeatSeparator: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Number: string
+Primary: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Except: Except
+Indent: Indent
+Group: And | Any | Choice | Class | Except | Extract | Field | Indent | Literal | Node | Not | One | Optional | Reference | Repeat | Sequence | Text | Zero | unknown
+Reference: Reference
+Id: string
+Class: Class
+ClassItem: Between | Equal
+Between: Between
+Equal: Equal
+PredicateItem: string
+Literal: Literal
+String: string
+StringItem: string[] | string
+Any: Any
+_: (string[])[]
+__: (string[])[]
+Space: string[]
+WhiteSpace: string[]
+SingleLineComment: (string[] | string)[]
+MultiLineComment: (string[] | string)[]

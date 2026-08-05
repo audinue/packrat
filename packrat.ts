@@ -31,33 +31,41 @@ type Location = { file: string, line: number, column: number, readonly preview: 
 
 type Value = null | string | Value[] | { tag: string, readonly location: Location, [field: string]: Value | Location }
 
+type Type =
+  | { tag: 'Unknown' }
+  | { tag: 'Null' }
+  | { tag: 'String' }
+  | { tag: 'Array', element: Type }
+  | { tag: 'Node', name: string, fields: { name: string, type: Type }[] }
+  | { tag: 'Union', types: Type[] }
+
 type Node = Exclude<Value, null | string | Value[]>
 
 type ParseOptions = { file?: string, startRule?: string }
 
 type ResolvedGrammar = { rules: ResolvedRule[] }
 
-type ResolvedRule = { name: string, expression: ResolvedExpression, resultCount: number, isLeftRecursive: boolean }
+type ResolvedRule = { name: string, type: Type, expression: ResolvedExpression, resultCount: number, isLeftRecursive: boolean }
 
 type ResolvedExpression =
-  | { tag: 'Choice', expressions: ResolvedExpression[], result: string, saved: string }
-  | { tag: 'Node', expression: ResolvedExpression, name: string, result: string, saved: string }
-  | { tag: 'Sequence', expressions: ResolvedExpression[], result: string }
-  | { tag: 'Field', expression: ResolvedExpression, name: string, result: string }
-  | { tag: 'Extract', expression: ResolvedExpression, result: string }
-  | { tag: 'Text', expression: ResolvedExpression, result: string, saved: string }
-  | { tag: 'And', expression: ResolvedExpression, result: string, saved: string }
-  | { tag: 'Not', expression: ResolvedExpression, result: string, saved: string }
-  | { tag: 'Optional', expression: ResolvedExpression, result: string, saved: string }
-  | { tag: 'Zero', expression: ResolvedExpression, result: string, saved: string, results: string }
-  | { tag: 'One', expression: ResolvedExpression, result: string, saved: string, results: string }
-  | { tag: 'Repeat', expression: ResolvedExpression, min: number, max?: number, separator?: ResolvedExpression, result: string, saved1: string, saved2: string, count: string, results: string }
-  | { tag: 'Reference', name: string, result: string }
-  | { tag: 'Except', expression: ResolvedExpression, result: string, saved: string }
-  | { tag: 'Indent', expression: ResolvedExpression, result: string, saved: string, char: string }
-  | { tag: 'Class', predicates: Predicate[], insensitive?: boolean, negation?: boolean, result: string }
-  | { tag: 'Literal', value: string, insensitive?: boolean, result: string }
-  | { tag: 'Any', result: string }
+  | { tag: 'Choice', type: Type, expressions: ResolvedExpression[], result: string, saved: string }
+  | { tag: 'Node', type: Type, expression: ResolvedExpression, name: string, result: string, saved: string }
+  | { tag: 'Sequence', type: Type, expressions: ResolvedExpression[], result: string }
+  | { tag: 'Field', type: Type, expression: ResolvedExpression, name: string, result: string }
+  | { tag: 'Extract', type: Type, expression: ResolvedExpression, result: string }
+  | { tag: 'Text', type: Type, expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'And', type: Type, expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Not', type: Type, expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Optional', type: Type, expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Zero', type: Type, expression: ResolvedExpression, result: string, saved: string, results: string }
+  | { tag: 'One', type: Type, expression: ResolvedExpression, result: string, saved: string, results: string }
+  | { tag: 'Repeat', type: Type, expression: ResolvedExpression, min: number, max?: number, separator?: ResolvedExpression, result: string, saved1: string, saved2: string, count: string, results: string }
+  | { tag: 'Reference', type: Type, name: string, result: string }
+  | { tag: 'Except', type: Type, expression: ResolvedExpression, result: string, saved: string }
+  | { tag: 'Indent', type: Type, expression: ResolvedExpression, result: string, saved: string, char: string }
+  | { tag: 'Class', type: Type, predicates: Predicate[], insensitive?: boolean, negation?: boolean, result: string }
+  | { tag: 'Literal', type: Type, value: string, insensitive?: boolean, result: string }
+  | { tag: 'Any', type: Type, result: string }
 
 class ParseError extends Error {
   constructor (message: string, public location: Location) {
@@ -81,7 +89,94 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
       const nextResults = () => `results${++resultsCount}`
       const nextCount = () => `count${++countCount}`
       const nextChar = () => `char${++charCount}`
-      const visited = new Set<string>()
+      const visitedExpressionType = new Set<string>()
+      const visitedleftRecursive = new Set<string>()
+      const uniqueTypes = (types: Type[]) => {
+        return types
+          .flatMap(type => {
+            if (type.tag === 'Union') {
+              return type.types
+            }
+            return type
+          })
+          .filter((type, index, types) => {
+            return types.findIndex(t => {
+              if (t.tag !== type.tag) {
+                return false
+              }
+              if (t.tag === 'Node' && type.tag === 'Node') {
+                return t.name === type.name
+              }
+              return true
+            }) === index
+          })
+      }
+      const getExpressionType = (expression: Expression): Type => {
+        switch (expression.tag) {
+          case 'Choice': {
+            const types = uniqueTypes(expression.expressions.map(getExpressionType))
+            if (types.length === 1) {
+              return types[0]!
+            }
+            return { tag: 'Union', types }
+          }
+          case 'Node': {
+            const fields: { name: string, type: Type }[] = []
+            if (expression.expression.tag === 'Field') {
+              fields.push({ name: expression.expression.name, type: getExpressionType(expression.expression) })
+            } else if (expression.expression.tag === 'Sequence') {
+              for (const e of expression.expression.expressions) {
+                if (e.tag === 'Field') {
+                  fields.push({ name: e.name, type: getExpressionType(e.expression) })
+                }
+              }
+            }
+            return { tag: 'Node', name: expression.name, fields }
+          }
+          case 'Sequence': {
+            const extracts = expression.expressions.filter(e => e.tag === 'Extract')
+            if (extracts.length === 1) {
+              return getExpressionType(extracts[0]!)
+            }
+            if (extracts.length > 1) {
+              const types = uniqueTypes(extracts.map(getExpressionType))
+              if (types.length === 1) {
+                return { tag: 'Array', element: types[0]! }
+              }
+              return { tag: 'Array', element: { tag: 'Union', types } }
+            }
+            const types = uniqueTypes(expression.expressions.map(getExpressionType))
+            if (types.length === 1) {
+              return { tag: 'Array', element: types[0]! }
+            }
+            return { tag: 'Array', element: { tag: 'Union', types } }
+          }
+          case 'Field': case 'Extract':
+            return getExpressionType(expression.expression)
+          case 'Text':
+            return { tag: 'String' }
+          case 'And': case 'Not':
+            return { tag: 'Null' }
+          case 'Optional':
+            return { tag: 'Union', types: [{ tag: 'Null' }, getExpressionType(expression.expression)] }
+          case 'Zero': case 'One': case 'Repeat':
+            return { tag: 'Array', element: getExpressionType(expression.expression) }
+          case 'Reference':
+            if (visitedExpressionType.has(expression.name)) {
+              return { tag: 'Unknown' }
+            }
+            visitedExpressionType.add(expression.name)
+            const type =  getExpressionType(rules[expression.name]!)
+            visitedExpressionType.delete(expression.name)
+            return type
+          case 'Except':
+            return { tag: 'String' }
+          case 'Indent':
+            return getExpressionType(expression.expression)
+          case 'Class': case 'Literal': case 'Any':
+            return { tag: 'String' }
+        }
+      }
       const isLeftRecursive = (expression: Expression): boolean => {
         switch (expression.tag) {
           case 'Choice':
@@ -96,10 +191,10 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             if (expression.name === rule.name) {
               return true
             }
-            if (visited.has(expression.name)) {
+            if (visitedleftRecursive.has(expression.name)) {
               return false
             }
-            visited.add(expression.name)
+            visitedleftRecursive.add(expression.name)
             return isLeftRecursive(rules[expression.name]!)
           case 'Except':
           case 'Indent':
@@ -111,38 +206,39 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
       const resolveExpression = (expression: Expression): ResolvedExpression => {
         switch (expression.tag) {
           case 'Choice':
-            return { ...expression, expressions: expression.expressions.map(resolveExpression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type: getExpressionType(expression), expressions: expression.expressions.map(resolveExpression), result: nextResult(), saved: nextSaved() }
           case 'Node':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Sequence':
-            return { ...expression, expressions: expression.expressions.map(resolveExpression), result: nextResult() }
+            return { ...expression, type: getExpressionType(expression), expressions: expression.expressions.map(resolveExpression), result: nextResult() }
           case 'Field':
           case 'Extract':
             const e = resolveExpression(expression.expression)
-            return { ...expression, expression: e, result: e.result }
+            return { ...expression, type: getExpressionType(expression), expression: e, result: e.result }
           case 'Text':
           case 'And':
           case 'Not':
           case 'Optional':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Zero':
           case 'One':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), results: nextResults() }
           case 'Repeat':
-            return { ...expression, expression: resolveExpression(expression.expression), separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator), result: nextResult(), saved1: nextSaved(), saved2: nextSaved(), count: nextCount(), results: nextResults() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator), result: nextResult(), saved1: nextSaved(), saved2: nextSaved(), count: nextCount(), results: nextResults() }
           case 'Reference':
-            return { ...expression, result: nextResult() }
+            return { ...expression, type: getExpressionType(expression), result: nextResult() }
           case 'Except':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved() }
           case 'Indent':
-            return { ...expression, expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), char: nextChar() }
+            return { ...expression, type: getExpressionType(expression), expression: resolveExpression(expression.expression), result: nextResult(), saved: nextSaved(), char: nextChar() }
           case 'Class':
           case 'Literal':
           case 'Any':
-            return { ...expression, result: nextResult() }
+            return { ...expression, type: getExpressionType(expression), result: nextResult() }
         }
       }
-      return { ...rule, expression: resolveExpression(rule.expression), resultCount, isLeftRecursive: isLeftRecursive(rule.expression) }
+      const expression = resolveExpression(rule.expression)
+      return { ...rule, type: expression.type, expression, resultCount, isLeftRecursive: isLeftRecursive(rule.expression) }
     })
   }
 }
@@ -2413,6 +2509,37 @@ const packratGrammar: Grammar = {
 }
 
 const resolvedPackratGrammar = resolveGrammar(packratGrammar)
+
+const stringifyGrammarTypes = (grammar: ResolvedGrammar): string => {
+  const stringifyType = (type: Type): string => {
+    switch (type.tag) {
+      case 'Unknown':
+        return 'unknown'
+      case 'Null':
+        return 'null'
+      case 'String':
+        return 'string'
+      case 'Array':
+        if (type.element.tag !== 'Union' && type.element.tag !== 'Array') {
+          return stringifyType(type.element) + '[]'
+        }
+        return `(${stringifyType(type.element)})[]`
+      case 'Node': {
+        return type.name
+      }
+      case 'Union':
+        return type.types.toSorted((a, b) => {
+          if (a.tag === 'Node' && b.tag === 'Node') {
+            return a.name.localeCompare(b.name)
+          }
+          return a.tag.localeCompare(b.tag)
+        }).map(stringifyType).join(' | ')
+    }
+  }
+  return grammar.rules.map(rule => `${rule.name}: ${stringifyType(rule.type)}`).join('\n')
+}
+
+console.log(stringifyGrammarTypes(resolvedPackratGrammar))
 
 // SECTION: packrat
 const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Value => {
