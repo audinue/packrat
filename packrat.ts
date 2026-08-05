@@ -1507,7 +1507,8 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       }
       case 'Literal': {
         const length = expression.value.length
-        const value = JSON.stringify(expression.value).replace(/\$/g, '\\$')
+        const value = JSON.stringify(expression.value)
+          .replace(/\$/g, '\\$') // "${" <-- error
         return `
           if (substr_compare($this->input, ${value}, $this->offset, ${length}, ${!!expression.insensitive}) === 0) {
             $${expression.result} = substr($this->input, $this->offset, ${length});
