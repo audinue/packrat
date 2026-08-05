@@ -2525,11 +2525,11 @@ const getResolvedGrammar = (grammarText: string): ResolvedGrammar => {
 }
 
 // SECTION: packrat
-const packrat = (input: TemplateStringsArray | string): (input: string, options?: ParseOptions) => Value => {
+const packrat = async (input: TemplateStringsArray | string): Promise<(input: string, options?: ParseOptions) => Promise<Value>> => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
     const parser = emitPhp(getResolvedGrammar(grammarText))
-    return (input: string, options: ParseOptions = {}) => {
+    return async (input: string, options: ParseOptions = {}) => {
       const php = `<?php
       error_reporting(E_ALL);
       ${parser}
@@ -2554,7 +2554,7 @@ JSON
   }
   if (import.meta.env.MODE === 'js') {
     const parser = emitJs(getResolvedGrammar(grammarText))
-    return (input: string, options: ParseOptions = {}) => {
+    return async (input: string, options: ParseOptions = {}) => {
       const js = `
         ${parser}
         const options = ${JSON.stringify(options)}
@@ -2573,7 +2573,7 @@ JSON
     }
   }
   const grammar = getResolvedGrammar(grammarText)
-  return (input: string, options: ParseOptions = {}) => {
+  return async (input: string, options: ParseOptions = {}) => {
     return evaluateGrammar(grammar, input, options)
   }
 }

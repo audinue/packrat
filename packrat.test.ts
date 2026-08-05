@@ -3,105 +3,105 @@ import { packrat, packratGrammar, parseGrammar } from './packrat'
 import { readFileSync } from 'node:fs'
 
 describe('packrat', () => {
-  test('Literal', () => {
-    const parse = packrat`
+  test('Literal', async () => {
+    const parse = await packrat`
       Any = .
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('0')).toBe('0')
-    expect(() => parse('')).toThrow()
-    expect(() => parse('aa')).toThrow()
+    expect(await parse('a')).toBe('a')
+    expect(await parse('0')).toBe('0')
+    await expect(parse('')).rejects.toThrow()
+    await expect(parse('aa')).rejects.toThrow()
   })
 
-  test('Literal', () => {
-    const parse = packrat`
+  test('Literal', async () => {
+    const parse = await packrat`
       Literal = "abc"
     `
-    expect(parse('abc')).toBe('abc')
-    expect(() => parse('abd')).toThrow()
-    expect(() => parse('')).toThrow()
+    expect(await parse('abc')).toBe('abc')
+    await expect(parse('abd')).rejects.toThrow()
+    await expect(parse('')).rejects.toThrow()
   })
 
-  test('Literal insensitive', () => {
-    const parse = packrat`
+  test('Literal insensitive', async () => {
+    const parse = await packrat`
       Literal = "abc"i
     `
-    expect(parse('abc')).toBe('abc')
-    expect(parse('ABC')).toBe('ABC')
-    expect(parse('AbC')).toBe('AbC')
-    expect(() => parse('abd')).toThrow()
+    expect(await parse('abc')).toBe('abc')
+    expect(await parse('ABC')).toBe('ABC')
+    expect(await parse('AbC')).toBe('AbC')
+    await expect(parse('abd')).rejects.toThrow()
   })
 
-  test('Class', () => {
-    const parse = packrat`
+  test('Class', async () => {
+    const parse = await packrat`
       Class = [a-z]
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('z')).toBe('z')
-    expect(() => parse('A')).toThrow()
-    expect(() => parse('0')).toThrow()
+    expect(await parse('a')).toBe('a')
+    expect(await parse('z')).toBe('z')
+    await expect(parse('A')).rejects.toThrow()
+    await expect(parse('0')).rejects.toThrow()
   })
 
-  test('Class negation', () => {
-    const parse = packrat`
+  test('Class negation', async () => {
+    const parse = await packrat`
       Class = [^a-z]
     `
-    expect(parse('A')).toBe('A')
-    expect(parse('0')).toBe('0')
-    expect(() => parse('a')).toThrow()
+    expect(await parse('A')).toBe('A')
+    expect(await parse('0')).toBe('0')
+    await expect(parse('a')).rejects.toThrow()
   })
 
-  test('Class equal predicate', () => {
-    const parse = packrat`
+  test('Class equal predicate', async () => {
+    const parse = await packrat`
       Class = [ab_]
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('b')).toBe('b')
-    expect(parse('_')).toBe('_')
-    expect(() => parse('c')).toThrow()
+    expect(await parse('a')).toBe('a')
+    expect(await parse('b')).toBe('b')
+    expect(await parse('_')).toBe('_')
+    await expect(parse('c')).rejects.toThrow()
   })
 
-  test('Class insensitive', () => {
-    const parse = packrat`
+  test('Class insensitive', async () => {
+    const parse = await packrat`
       Class = [a-z]i
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('A')).toBe('A')
-    expect(() => parse('0')).toThrow()
+    expect(await parse('a')).toBe('a')
+    expect(await parse('A')).toBe('A')
+    await expect(parse('0')).rejects.toThrow()
   })
 
-  test('Reference', () => {
-    const parse = packrat`
+  test('Reference', async () => {
+    const parse = await packrat`
       A = B
       B = "x"
     `
-    expect(parse('x')).toBe('x')
-    expect(() => parse('y')).toThrow()
+    expect(await parse('x')).toBe('x')
+    await expect(parse('y')).rejects.toThrow()
   })
 
-  test('Choice', () => {
-    const parse = packrat`
+  test('Choice', async () => {
+    const parse = await packrat`
       Choice = "a" / "b"
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('b')).toBe('b')
-    expect(() => parse('c')).toThrow()
+    expect(await parse('a')).toBe('a')
+    expect(await parse('b')).toBe('b')
+    await expect(parse('c')).rejects.toThrow()
   })
 
-  test('Sequence', () => {
-    const parse = packrat`
+  test('Sequence', async () => {
+    const parse = await packrat`
       Sequence = "a" "b"
     `
-    expect(parse('ab')).toEqual(['a', 'b'])
-    expect(() => parse('a')).toThrow()
-    expect(() => parse('ba')).toThrow()
+    expect(await parse('ab')).toEqual(['a', 'b'])
+    await expect(parse('a')).rejects.toThrow()
+    await expect(parse('ba')).rejects.toThrow()
   })
 
-  test('Node', () => {
-    const parse = packrat`
+  test('Node', async () => {
+    const parse = await packrat`
       Node = a:"a" b:"b" -> Node
     `
-    const result = parse('ab')
+    const result = await parse('ab')
     expect(result).toMatchObject({
       tag: 'Node',
       a: 'a',
@@ -110,201 +110,201 @@ describe('packrat', () => {
     })
   })
 
-  test('Field', () => {
-    const parse = packrat`
+  test('Field', async () => {
+    const parse = await packrat`
       Field = value:"a" -> Field
     `
-    const result = parse('a')
+    const result = await parse('a')
     expect(result).toMatchObject({ tag: 'Field', value: 'a' })
   })
 
-  test('Extract single', () => {
-    const parse = packrat`
+  test('Extract single', async () => {
+    const parse = await packrat`
       Extract = "(" ^"a" ")"
     `
-    expect(parse('(a)')).toBe('a')
+    expect(await parse('(a)')).toBe('a')
   })
 
-  test('Extract multiple', () => {
-    const parse = packrat`
+  test('Extract multiple', async () => {
+    const parse = await packrat`
       Extract = ^"a" "b" ^"c"
     `
-    expect(parse('abc')).toEqual(['a', 'c'])
+    expect(await parse('abc')).toEqual(['a', 'c'])
   })
 
-  test('Text', () => {
-    const parse = packrat`
+  test('Text', async () => {
+    const parse = await packrat`
       Text = $( "a" "b" "c" )
     `
-    expect(parse('abc')).toBe('abc')
+    expect(await parse('abc')).toBe('abc')
   })
 
-  test('Except', () => {
-    const parse = packrat`
+  test('Except', async () => {
+    const parse = await packrat`
       Except = ~"a"
     `
-    expect(parse('b')).toBe('b')
-    expect(() => parse('a')).toThrow()
-    expect(() => parse('')).toThrow()
+    expect(await parse('b')).toBe('b')
+    await expect(parse('a')).rejects.toThrow()
+    await expect(parse('')).rejects.toThrow()
   })
 
-  test('And', () => {
-    const parse = packrat`
+  test('And', async () => {
+    const parse = await packrat`
       And = &"a" "a"
     `
-    expect(parse('a')).toEqual([null, 'a'])
-    expect(() => parse('b')).toThrow()
+    expect(await parse('a')).toEqual([null, 'a'])
+    await expect(parse('b')).rejects.toThrow()
   })
 
-  test('Not', () => {
-    const parse = packrat`
+  test('Not', async () => {
+    const parse = await packrat`
       Not = !"a" .
     `
-    expect(parse('b')).toEqual([null, 'b'])
-    expect(() => parse('a')).toThrow()
+    expect(await parse('b')).toEqual([null, 'b'])
+    await expect(parse('a')).rejects.toThrow()
   })
 
-  test('Optional', () => {
-    const parse = packrat`
+  test('Optional', async () => {
+    const parse = await packrat`
       Optional = "a"?
     `
-    expect(parse('a')).toBe('a')
-    expect(parse('')).toBe(null)
+    expect(await parse('a')).toBe('a')
+    expect(await parse('')).toBe(null)
   })
 
-  test('Zero', () => {
-    const parse = packrat`
+  test('Zero', async () => {
+    const parse = await packrat`
       Zero = "a"*
     `
-    expect(parse('')).toEqual([])
-    expect(parse('aaa')).toEqual(['a', 'a', 'a'])
+    expect(await parse('')).toEqual([])
+    expect(await parse('aaa')).toEqual(['a', 'a', 'a'])
   })
 
-  test('One', () => {
-    const parse = packrat`
+  test('One', async () => {
+    const parse = await packrat`
       One = "a"+
     `
-    expect(parse('a')).toEqual(['a'])
-    expect(parse('aaa')).toEqual(['a', 'a', 'a'])
-    expect(() => parse('')).toThrow()
+    expect(await parse('a')).toEqual(['a'])
+    expect(await parse('aaa')).toEqual(['a', 'a', 'a'])
+    await expect(parse('')).rejects.toThrow()
   })
 
-  test('Repeat min max', () => {
-    const parse = packrat`
+  test('Repeat min max', async () => {
+    const parse = await packrat`
       Repeat = "a"{2,3}
     `
-    expect(parse('aa')).toEqual(['a', 'a'])
-    expect(parse('aaa')).toEqual(['a', 'a', 'a'])
-    expect(() => parse('a')).toThrow()
-    expect(() => parse('aaaa')).toThrow()
+    expect(await parse('aa')).toEqual(['a', 'a'])
+    expect(await parse('aaa')).toEqual(['a', 'a', 'a'])
+    await expect(parse('a')).rejects.toThrow()
+    await expect(parse('aaaa')).rejects.toThrow()
   })
 
-  test('Repeat min only', () => {
-    const parse = packrat`
+  test('Repeat min only', async () => {
+    const parse = await packrat`
       Repeat = "a"{2}
     `
-    expect(parse('aa')).toEqual(['a', 'a'])
-    expect(parse('aaa')).toEqual(['a', 'a', 'a'])
-    expect(() => parse('a')).toThrow()
+    expect(await parse('aa')).toEqual(['a', 'a'])
+    expect(await parse('aaa')).toEqual(['a', 'a', 'a'])
+    await expect(parse('a')).rejects.toThrow()
   })
 
-  test('Repeat separator', () => {
-    const parse = packrat`
+  test('Repeat separator', async () => {
+    const parse = await packrat`
       Repeat = "a"{2,3;","}
     `
-    expect(parse('a,a')).toEqual(['a', 'a'])
-    expect(parse('a,a,a')).toEqual(['a', 'a', 'a'])
-    expect(() => parse('a')).toThrow()
-    expect(() => parse('aa')).toThrow()
+    expect(await parse('a,a')).toEqual(['a', 'a'])
+    expect(await parse('a,a,a')).toEqual(['a', 'a', 'a'])
+    await expect(parse('a')).rejects.toThrow()
+    await expect(parse('aa')).rejects.toThrow()
   })
 
-  test('Indent', () => {
-    const parse = packrat`
+  test('Indent', async () => {
+    const parse = await packrat`
       Indent = >> "a" << -> Indent
     `
-    expect(parse('\n  a')).toMatchObject({ tag: 'Indent' })
-    expect(() => parse('a')).toThrow()
-    expect(() => parse('\na')).toThrow()
+    expect(await parse('\n  a')).toMatchObject({ tag: 'Indent' })
+    await expect(parse('a')).rejects.toThrow()
+    await expect(parse('\na')).rejects.toThrow()
   })
 
-  test('Indent nested deeper', () => {
-    const parse = packrat`
+  test('Indent nested deeper', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    const result = parse('a\n  b')
+    const result = await parse('a\n  b')
     expect(result).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
-  test('Indent nested same or lower fails', () => {
-    const parse = packrat`
+  test('Indent nested same or lower fails', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    expect(() => parse('a\nb')).toThrow()
+    await expect(parse('a\nb')).rejects.toThrow()
   })
 
-  test('Indent auto detect 2 spaces', () => {
-    const parse = packrat`
+  test('Indent auto detect 2 spaces', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    expect(parse('a\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+    expect(await parse('a\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
-  test('Indent auto detect 4 spaces', () => {
-    const parse = packrat`
+  test('Indent auto detect 4 spaces', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    expect(parse('a\n    b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+    expect(await parse('a\n    b')).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
-  test('Indent auto detect tab', () => {
-    const parse = packrat`
+  test('Indent auto detect tab', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    expect(parse('a\n\tb')).toMatchObject({ tag: 'Outer', inner: 'b' })
+    expect(await parse('a\n\tb')).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
-  test('Indent nested 2 levels with 2 spaces unit', () => {
-    const parse = packrat`
+  test('Indent nested 2 levels with 2 spaces unit', async () => {
+    const parse = await packrat`
       Block = "a" >> "b" >> "c" << << -> Block
     `
-    const result = parse('a\n  b\n    c')
+    const result = await parse('a\n  b\n    c')
     expect(result).toMatchObject({ tag: 'Block' })
   })
 
-  test('Indent nested 2 levels with 4 spaces unit', () => {
-    const parse = packrat`
+  test('Indent nested 2 levels with 4 spaces unit', async () => {
+    const parse = await packrat`
       Block = "a" >> "b" >> "c" << << -> Block
     `
-    const result = parse('a\n    b\n        c')
+    const result = await parse('a\n    b\n        c')
     expect(result).toMatchObject({ tag: 'Block' })
   })
 
-  test('Indent nested 2 levels with tab unit', () => {
-    const parse = packrat`
+  test('Indent nested 2 levels with tab unit', async () => {
+    const parse = await packrat`
       Block = "a" >> "b" >> "c" << << -> Block
     `
-    const result = parse('a\n\tb\n\t\tc')
+    const result = await parse('a\n\tb\n\t\tc')
     expect(result).toMatchObject({ tag: 'Block' })
   })
 
-  test('Indent fails on non multiple', () => {
-    const parse = packrat`
+  test('Indent fails on non multiple', async () => {
+    const parse = await packrat`
       Block = "a" >> "b" >> "c" << << -> Block
     `
-    expect(() => parse('a\n  b\n     c')).toThrow()
-    expect(parse('a\n  b\n    c')).toMatchObject({ tag: 'Block' })
+    await expect(parse('a\n  b\n     c')).rejects.toThrow()
+    expect(await parse('a\n  b\n    c')).toMatchObject({ tag: 'Block' })
   })
 
-  test('Indent with blank lines', () => {
-    const parse = packrat`
+  test('Indent with blank lines', async () => {
+    const parse = await packrat`
       Outer = "a" inner:>> "b" << -> Outer
     `
-    expect(parse('a\n\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
+    expect(await parse('a\n\n  b')).toMatchObject({ tag: 'Outer', inner: 'b' })
   })
 
-  test('Self host', () => {
+  test('Self host', async () => {
     const input = readFileSync(`${import.meta.dir}/packrat.packrat`, 'utf-8')
-    const parse = packrat(input)
-    expect(parseGrammar(parse(input))).toEqual(packratGrammar)
+    const parse = await packrat(input)
+    expect(parseGrammar(await parse(input))).toEqual(packratGrammar)
   })
 })

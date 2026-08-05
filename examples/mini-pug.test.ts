@@ -3,210 +3,210 @@ import { packrat } from '../packrat'
 import { readFileSync } from 'node:fs'
 
 const grammarText = readFileSync(`${import.meta.dir}/mini-pug.packrat`, 'utf-8')
-const parsePug = (source: string) => packrat(grammarText)(source)
+const parsePug = async (source: string) => (await packrat(grammarText))(source)
 
 describe('mini-pug parser', () => {
-  const ast = (src: string) => parsePug(src) as any
+  const ast = async (src: string) => (await parsePug(src)) as any
 
-  test('Pug root', () => {
-    expect(ast('p')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element' }] })
+  test('Pug root', async () => {
+    expect(await ast('p')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element' }] })
   })
 
-  test('tag sederhana', () => {
-    expect(ast('p')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element', name: 'p' }] })
+  test('tag sederhana', async () => {
+    expect(await ast('p')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element', name: 'p' }] })
   })
 
-  test('tag div', () => {
-    expect(ast('div')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element', name: 'div' }] })
+  test('tag div', async () => {
+    expect(await ast('div')).toMatchObject({ tag: 'Pug', elements: [{ tag: 'Element', name: 'div' }] })
   })
 
-  test('tag dengan inline text', () => {
-    expect(ast('p Hello World')).toMatchObject({
+  test('tag dengan inline text', async () => {
+    expect(await ast('p Hello World')).toMatchObject({
       tag: 'Pug',
       elements: [{ tag: 'Element', name: 'p', text: 'Hello World' }]
     })
   })
 
-  test('nested elements 2 level', () => {
-    expect(ast('div\n  p Hello')).toMatchObject({
+  test('nested elements 2 level', async () => {
+    expect(await ast('div\n  p Hello')).toMatchObject({
       tag: 'Pug',
       elements: [{ tag: 'Element', name: 'div', children: [{ tag: 'Element', name: 'p', text: 'Hello' }] }]
     })
   })
 
-  test('nested elements 3 level', () => {
-    expect(ast('div\n  section\n    p Deep')).toMatchObject({
+  test('nested elements 3 level', async () => {
+    expect(await ast('div\n  section\n    p Deep')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'div', children: [{ name: 'section', children: [{ name: 'p', text: 'Deep' }] }] }]
     })
   })
 
-  test('sibling elements', () => {
-    expect(ast('div\n  p First\n  p Second')).toMatchObject({
+  test('sibling elements', async () => {
+    expect(await ast('div\n  p First\n  p Second')).toMatchObject({
       tag: 'Pug',
       elements: [{ children: [{ name: 'p', text: 'First' }, { name: 'p', text: 'Second' }] }]
     })
   })
 
-  test('class shorthand', () => {
-    expect(ast('div.container')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.container' }] })
+  test('class shorthand', async () => {
+    expect(await ast('div.container')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.container' }] })
   })
 
-  test('id shorthand', () => {
-    expect(ast('div#main')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div#main' }] })
+  test('id shorthand', async () => {
+    expect(await ast('div#main')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div#main' }] })
   })
 
-  test('class dan id bareng', () => {
-    expect(ast('div.container#main')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.container#main' }] })
+  test('class dan id bareng', async () => {
+    expect(await ast('div.container#main')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.container#main' }] })
   })
 
-  test('multiple classes', () => {
-    expect(ast('div.foo.bar')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.foo.bar' }] })
+  test('multiple classes', async () => {
+    expect(await ast('div.foo.bar')).toMatchObject({ tag: 'Pug', elements: [{ name: 'div.foo.bar' }] })
   })
 
-  test('implicit div dengan class', () => {
-    expect(ast('.container')).toMatchObject({ tag: 'Pug', elements: [{ name: '.container' }] })
+  test('implicit div dengan class', async () => {
+    expect(await ast('.container')).toMatchObject({ tag: 'Pug', elements: [{ name: '.container' }] })
   })
 
-  test('implicit div dengan id', () => {
-    expect(ast('#header')).toMatchObject({ tag: 'Pug', elements: [{ name: '#header' }] })
+  test('implicit div dengan id', async () => {
+    expect(await ast('#header')).toMatchObject({ tag: 'Pug', elements: [{ name: '#header' }] })
   })
 
-  test('void elements', () => {
+  test('void elements', async () => {
     for (const tag of ['br', 'hr', 'img', 'input', 'meta', 'link']) {
-      expect(ast(tag)).toMatchObject({ tag: 'Pug', elements: [{ name: tag }] })
+      expect(await ast(tag)).toMatchObject({ tag: 'Pug', elements: [{ name: tag }] })
     }
   })
 
-  test('void element dengan class', () => {
-    expect(ast('hr.divider')).toMatchObject({ tag: 'Pug', elements: [{ name: 'hr.divider' }] })
+  test('void element dengan class', async () => {
+    expect(await ast('hr.divider')).toMatchObject({ tag: 'Pug', elements: [{ name: 'hr.divider' }] })
   })
 
-  test('tag dengan text dan children', () => {
-    expect(ast('div Parent text\n  p Child')).toMatchObject({
+  test('tag dengan text dan children', async () => {
+    expect(await ast('div Parent text\n  p Child')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'div', text: 'Parent text', children: [{ name: 'p', text: 'Child' }] }]
     })
   })
 
-  test('dedent ke parent setelah sibling dalam', () => {
-    expect(ast('ul\n  li Item A\n  li\n    ul\n      li Sub A\n      li Sub B\n  li Item B')).toMatchObject({
+  test('dedent ke parent setelah sibling dalam', async () => {
+    expect(await ast('ul\n  li Item A\n  li\n    ul\n      li Sub A\n      li Sub B\n  li Item B')).toMatchObject({
       tag: 'Pug',
       elements: [{ children: [{ name: 'li', text: 'Item A' }, { name: 'li' }, { name: 'li', text: 'Item B' }] }]
     })
   })
 
-  test('root sibling setelah nested block', () => {
-    expect(ast('div\n  p Child\nfooter Note')).toMatchObject({
+  test('root sibling setelah nested block', async () => {
+    expect(await ast('div\n  p Child\nfooter Note')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'div' }, { name: 'footer', text: 'Note' }]
     })
   })
 
-  test('tab indentation didukung', () => {
-    expect(ast('div\n\tp Tabbed')).toMatchObject({
+  test('tab indentation didukung', async () => {
+    expect(await ast('div\n\tp Tabbed')).toMatchObject({
       tag: 'Pug',
       elements: [{ children: [{ name: 'p', text: 'Tabbed' }] }]
     })
   })
 
-  test('blank line di tengah', () => {
-    expect(ast('div\n\n  p After blank')).toMatchObject({
+  test('blank line di tengah', async () => {
+    expect(await ast('div\n\n  p After blank')).toMatchObject({
       tag: 'Pug',
       elements: [{ children: [{ name: 'p', text: 'After blank' }] }]
     })
   })
 
-  test('empty input error', () => {
-    expect(() => ast('')).toThrow()
+  test('empty input error', async () => {
+    await expect(ast('')).rejects.toThrow()
   })
 
-  test('kombinasi class id dan text', () => {
-    expect(ast('button.btn.primary#submit Click me')).toMatchObject({
+  test('kombinasi class id dan text', async () => {
+    expect(await ast('button.btn.primary#submit Click me')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'button.btn.primary#submit', text: 'Click me' }]
     })
   })
 
-  test('atribut sederhana', () => {
-    expect(ast('a(href="/link")')).toMatchObject({
+  test('atribut sederhana', async () => {
+    expect(await ast('a(href="/link")')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'a', attrs: { tag: 'Attrs', attrs: [{ name: 'href', value: '/link' }] } }]
     })
   })
 
-  test('atribut ganda', () => {
-    expect(ast('a(href="/link" target="_blank")')).toMatchObject({
+  test('atribut ganda', async () => {
+    expect(await ast('a(href="/link" target="_blank")')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ name: 'href' }, { name: 'target', value: '_blank' }] } }]
     })
   })
 
-  test('atribut di void element', () => {
-    expect(ast('input(type="text" name="user")')).toMatchObject({
+  test('atribut di void element', async () => {
+    expect(await ast('input(type="text" name="user")')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'input', attrs: { attrs: [{ name: 'type' }, { name: 'name' }] } }]
     })
   })
 
-  test('boolean attribute (tanpa value)', () => {
-    expect(ast('input(disabled)')).toMatchObject({
+  test('boolean attribute (tanpa value)', async () => {
+    expect(await ast('input(disabled)')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ name: 'disabled', value: null }] } }]
     })
   })
 
-  test('atribut dengan dash di nama', () => {
-    expect(ast('div(data-id="5")')).toMatchObject({
+  test('atribut dengan dash di nama', async () => {
+    expect(await ast('div(data-id="5")')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ name: 'data-id', value: '5' }] } }]
     })
   })
 
-  test('atribut dengan spasi di value', () => {
-    expect(ast('div(class="foo bar")')).toMatchObject({
+  test('atribut dengan spasi di value', async () => {
+    expect(await ast('div(class="foo bar")')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ value: 'foo bar' }] } }]
     })
   })
 
-  test('atribut dengan text', () => {
-    expect(ast('a(href="/link") Click me')).toMatchObject({
+  test('atribut dengan text', async () => {
+    expect(await ast('a(href="/link") Click me')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ name: 'href' }] }, text: 'Click me' }]
     })
   })
 
-  test('shorthand class + atribut', () => {
-    expect(ast('a.btn(href="/x")')).toMatchObject({
+  test('shorthand class + atribut', async () => {
+    expect(await ast('a.btn(href="/x")')).toMatchObject({
       tag: 'Pug',
       elements: [{ name: 'a.btn', attrs: { attrs: [{ name: 'href' }] } }]
     })
   })
 
-  test('atribut dengan children', () => {
-    expect(ast('div(data-x="1")\n  p Hi')).toMatchObject({
+  test('atribut dengan children', async () => {
+    expect(await ast('div(data-x="1")\n  p Hi')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ name: 'data-x' }] }, children: [{ name: 'p', text: 'Hi' }] }]
     })
   })
 
-  test('escaping di attribute value', () => {
-    expect(ast('a(href="/search?q=a&b=1")')).toMatchObject({
+  test('escaping di attribute value', async () => {
+    expect(await ast('a(href="/search?q=a&b=1")')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ value: '/search?q=a&b=1' }] } }]
     })
   })
 
-  test('attribute value kosong', () => {
-    expect(ast('input(value="")')).toMatchObject({
+  test('attribute value kosong', async () => {
+    expect(await ast('input(value="")')).toMatchObject({
       tag: 'Pug',
       elements: [{ attrs: { attrs: [{ value: '' }] } }]
     })
   })
 
-  test('template HTML sederhana', () => {
-    expect(ast('html\n  head\n    title My Site\n  body\n    div.container\n      h1 Welcome\n      p Hello World')).toMatchObject({
+  test('template HTML sederhana', async () => {
+    expect(await ast('html\n  head\n    title My Site\n  body\n    div.container\n      h1 Welcome\n      p Hello World')).toMatchObject({
       tag: 'Pug',
       elements: [{
         name: 'html',
@@ -218,8 +218,8 @@ describe('mini-pug parser', () => {
     })
   })
 
-  test('deep nesting 5 level', () => {
-    expect(ast('div\n  section\n    article\n      aside\n        p Deepest')).toMatchObject({
+  test('deep nesting 5 level', async () => {
+    expect(await ast('div\n  section\n    article\n      aside\n        p Deepest')).toMatchObject({
       tag: 'Pug',
       elements: [{ children: [{ children: [{ children: [{ children: [{ name: 'p', text: 'Deepest' }] }] }] }] }]
     })
