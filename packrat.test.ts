@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { packrat, packratGrammar, parseGrammar } from './packrat'
+import { createPhpWorker, packrat, packratGrammar, parseGrammar } from './packrat'
 import { readFileSync } from 'node:fs'
 
 describe('packrat', () => {
@@ -306,5 +306,28 @@ describe('packrat', () => {
     const input = readFileSync(`${import.meta.dir}/packrat.packrat`, 'utf-8')
     const parse = await packrat(input)
     expect(parseGrammar(await parse(input))).toEqual(packratGrammar)
+  })
+})
+
+describe('createPhpWorker', () => {
+  test('eval mengembalikan hasil echo', async () => {
+    const worker = createPhpWorker()
+    const result = await worker.eval(`<?php echo json_encode([1, 2, 3]);`)
+    expect(JSON.parse(result)).toEqual([1, 2, 3])
+    worker.close()
+  })
+
+  test('eval bisa dipanggil berkali-kali', async () => {
+    const worker = createPhpWorker()
+    expect(await worker.eval(`<?php echo 'a';`)).toBe('a')
+    expect(await worker.eval(`<?php echo 'b';`)).toBe('b')
+    worker.close()
+  })
+
+  test('eval reject pas error', async () => {
+    const worker = createPhpWorker()
+    await expect(worker.eval(`<?php throw new RuntimeException('boom');`)).rejects.toThrow('boom')
+    expect(await worker.eval(`<?php echo 'still alive';`)).toBe('still alive')
+    worker.close()
   })
 })

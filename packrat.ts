@@ -1222,7 +1222,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
 }
 
 // SECTION: emitPhp
-const emitPhp = (grammar: ResolvedGrammar) => {
+const emitPhp = (grammar: ResolvedGrammar, parserClassName = 'Parser', errorClassName = 'ParserError') => {
   const emitPhpExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
       case 'Choice': {
@@ -1611,14 +1611,14 @@ const emitPhp = (grammar: ResolvedGrammar) => {
   }
   const rules = grammar.rules.map(emitPhpRule).join('')
   return `
-    class PackratParseError extends RuntimeException {
+    class ${errorClassName} extends RuntimeException {
       public $location;
       function __construct($message, $location) {
         parent::__construct($message);
         $this->location = $location;
       }
     }
-    class Parser {
+    class ${parserClassName} {
       private $err;
       private $input;
       private $file;
@@ -1674,7 +1674,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
           $unexpected = $this->offset < strlen($input) ? json_encode($input[$this->offset], JSON_UNESCAPED_SLASHES) : 'end of file';
           $locationString = ($location['toString'])();
           $locationPreview = ($location['preview'])();
-          throw new PackratParseError("Unexpected $unexpected at $locationString\\n\\n$locationPreview", $location);
+          throw new ${errorClassName}("Unexpected $unexpected at $locationString\\n\\n$locationPreview", $location);
         }
         return $result;
       }
@@ -2524,32 +2524,119 @@ const getResolvedGrammar = (grammarText: string): ResolvedGrammar => {
   return grammar
 }
 
+// SECTION: createPhpWorker
+type PhpWorker = {
+  eval: (phpCode: string) => Promise<any>
+  close: () => void
+}
+
+const phpWorkerLoop = `$stdin = fopen('php://stdin', 'r');
+$lastId = null;
+register_shutdown_function(function () use (&$lastId) {
+  $error = error_get_last();
+  if ($error !== null && $lastId !== null) {
+    echo json_encode(['jsonrpc' => '2.0', 'id' => $lastId, 'error' => ['code' => -32603, 'message' => $error['message']]]) . "\\n";
+    fflush(STDOUT);
+  }
+});
+while (($line = fgets($stdin)) !== false) {
+  $line = trim($line);
+  if ($line === '') continue;
+  $request = json_decode($line, true);
+  if (!is_array($request)) continue;
+  $id = $request['id'] ?? null;
+  $lastId = $id;
+  $code = preg_replace('/^\\s*<\\?php\\s*/', '', $request['params']['code'] ?? '');
+  $code = preg_replace('/\\?>\\s*$/', '', $code);
+  ob_start();
+  try {
+    eval($code);
+    $result = ob_get_clean();
+  } catch (Throwable $e) {
+    ob_end_clean();
+    echo json_encode(['jsonrpc' => '2.0', 'id' => $id, 'error' => ['code' => -32603, 'message' => $e->getMessage()]]) . "\\n";
+    fflush(STDOUT);
+    continue;
+  }
+  echo json_encode(['jsonrpc' => '2.0', 'id' => $id, 'result' => $result]) . "\\n";
+  fflush(STDOUT);
+}
+`
+
+const createPhpWorker = (phpBinary: string = 'php'): PhpWorker => {
+  const proc = Bun.spawn([phpBinary, '-r', phpWorkerLoop], { stdin: 'pipe', stdout: 'pipe' })
+  let nextId = 0
+  const pending = new Map<number, { resolve: (result: any) => void, reject: (error: Error) => void }>()
+  let buffer = ''
+  const readStdout = async () => {
+    for await (const chunk of proc.stdout) {
+      buffer += Buffer.from(chunk).toString()
+      let index
+      while ((index = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, index).trim()
+        buffer = buffer.slice(index + 1)
+        if (line === '') continue
+        let response: { id: number, result?: any, error?: { message: string } }
+        try {
+          response = JSON.parse(line)
+        } catch {
+          continue
+        }
+        const entry = pending.get(response.id)
+        if (entry) {
+          pending.delete(response.id)
+          if (response.error) {
+            entry.reject(new Error(response.error.message))
+          } else {
+            entry.resolve(response.result)
+          }
+        }
+      }
+    }
+    const error = new Error('PHP worker closed unexpectedly')
+    for (const entry of pending.values()) entry.reject(error)
+    pending.clear()
+  }
+  readStdout()
+  return {
+    eval: async (phpCode: string) => {
+      const id = nextId++
+      const promise = new Promise<any>((resolve, reject) => {
+        pending.set(id, { resolve, reject })
+      })
+      await proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method: 'eval', params: { code: phpCode } }) + '\n')
+      return promise
+    },
+    close: () => {
+      proc.stdin.end()
+      proc.kill()
+    },
+  }
+}
+
+let phpWorker: PhpWorker | undefined = undefined
+let classCounter = 0
+
 // SECTION: packrat
 const packrat = async (input: TemplateStringsArray | string): Promise<(input: string, options?: ParseOptions) => Promise<Value>> => {
   const grammarText = typeof input === 'string' ? input : input.join('')
   if (import.meta.env.MODE === 'php') {
-    const parser = emitPhp(getResolvedGrammar(grammarText))
+    const id = ++classCounter
+    const parser = emitPhp(getResolvedGrammar(grammarText), `Parser${id}`, `ParserError${id}`)
+    if (!phpWorker) {
+      phpWorker = createPhpWorker()
+    }
+    await phpWorker.eval(`<?php\n${parser}`)
     return async (input: string, options: ParseOptions = {}) => {
       const php = `<?php
-      error_reporting(E_ALL);
-      ${parser}
-      $parser = new Parser();
+      $parser = new Parser${id}();
       $in = json_decode(<<<'JSON'
 ${JSON.stringify({ input, startRule: options.startRule, file: options.file })}
 JSON
 , true);
-      try {
-        echo json_encode($parser->parse($in['input'], startRule: $in['startRule'] ?? null, file: $in['file'] ?? null));
-      } catch (PackratParseError $e) {
-        echo json_encode(['__error' => true, 'message' => $e->getMessage(), 'e' => $e]);
-      }
+      echo json_encode($parser->parse($in['input'], startRule: $in['startRule'] ?? null, file: $in['file'] ?? null));
       `
-      const out = Bun.spawnSync(['php'], { stdin: Buffer.from(php) }).stdout.toString()
-      const result = JSON.parse(out)
-      if (result?.__error) {
-        throw new Error()
-      }
-      return result
+      return JSON.parse(await phpWorker?.eval(php) as unknown as string)
     }
   }
   if (import.meta.env.MODE === 'js') {
@@ -2610,4 +2697,4 @@ const stringifyGrammarTypes = (grammar: ResolvedGrammar): string => {
 
 // console.log(stringifyGrammarTypes(resolvedPackratGrammar))
 
-export { evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, type Location, type Node, type Value as Ok }
+export { createPhpWorker, evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, type Location, type Node, type Value as Ok }
