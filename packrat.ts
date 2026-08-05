@@ -32,7 +32,7 @@ type Location = { file: string, line: number, column: number, readonly preview: 
 type Value = null | string | Value[] | { tag: string, readonly location: Location, [field: string]: Value | Location }
 
 type Type =
-  | { tag: 'Unknown' }
+  | { tag: 'Recursion' }
   | { tag: 'Null' }
   | { tag: 'String' }
   | { tag: 'Array', element: Type }
@@ -163,7 +163,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             return { tag: 'Array', element: getExpressionType(expression.expression) }
           case 'Reference':
             if (visitedExpressionType.has(expression.name)) {
-              return { tag: 'Unknown' }
+              return { tag: 'Recursion' }
             }
             visitedExpressionType.add(expression.name)
             const type =  getExpressionType(rules[expression.name]!)
@@ -2514,27 +2514,28 @@ const resolvedPackratGrammar = resolveGrammar(packratGrammar)
 const stringifyGrammarTypes = (grammar: ResolvedGrammar): string => {
   const stringifyType = (type: Type): string => {
     switch (type.tag) {
-      case 'Unknown':
-        return 'unknown'
+      case 'Recursion':
+        return 'recursion'
       case 'Null':
         return 'null'
       case 'String':
         return 'string'
       case 'Array':
-        if (type.element.tag !== 'Union' && type.element.tag !== 'Array') {
+        if (type.element.tag !== 'Array') {
           return stringifyType(type.element) + '[]'
         }
         return `(${stringifyType(type.element)})[]`
       case 'Node': {
-        return type.name
+        return `${type.name} { ${type.fields.map(field => `${field.name}: ${stringifyType(field.type)}`).join(', ')} }`
       }
       case 'Union':
-        return type.types.toSorted((a, b) => {
-          if (a.tag === 'Node' && b.tag === 'Node') {
-            return a.name.localeCompare(b.name)
-          }
-          return a.tag.localeCompare(b.tag)
-        }).map(stringifyType).join(' | ')
+        return 'Value'
+        // return type.types.toSorted((a, b) => {
+        //   if (a.tag === 'Node' && b.tag === 'Node') {
+        //     return a.name.localeCompare(b.name)
+        //   }
+        //   return a.tag.localeCompare(b.tag)
+        // }).map(stringifyType).join(' | ')
     }
   }
   return grammar.rules.map(rule => `${rule.name}: ${stringifyType(rule.type)}`).join('\n')
