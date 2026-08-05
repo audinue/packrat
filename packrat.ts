@@ -661,13 +661,13 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
 
 // SECTION: emitJs
 const emitJs = (grammar: ResolvedGrammar) => {
-  const emitExpression = (expression: ResolvedExpression): string => {
+  const emitJsExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
       case 'Choice': {
         let buffer = `${expression.result} = err`
         for (const e of expression.expressions.toReversed()) {
           buffer = `
-            ${emitExpression(e)}
+            ${emitJsExpression(e)}
             if (${e.result} === err) {
               offset = ${expression.saved}
               ${buffer}
@@ -696,7 +696,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
             : []
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           if (${expression.expression.result} === err) {
             ${expression.result} = err
           } else {
@@ -722,7 +722,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         }
         for (const e of expression.expressions.toReversed()) {
           buffer = `
-            ${emitExpression(e)}
+            ${emitJsExpression(e)}
             if (${e.result} === err) {
               ${expression.result} = err
             } else {
@@ -733,12 +733,12 @@ const emitJs = (grammar: ResolvedGrammar) => {
         return buffer
       }
       case 'Field': case 'Extract': {
-        return emitExpression(expression.expression)
+        return emitJsExpression(expression.expression)
       }
       case 'Text': {
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           if (${expression.expression.result} === err) {
             ${expression.result} = err
           } else {
@@ -749,7 +749,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       case 'And': {
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           offset = ${expression.saved}
           if (${expression.expression.result} === err) {
             ${expression.result} = err
@@ -761,7 +761,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       case 'Not': {
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           offset = ${expression.saved}
           if (${expression.expression.result} === err) {
             ${expression.result} = null
@@ -773,7 +773,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       case 'Optional': {
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           if (${expression.expression.result} === err) {
             offset = ${expression.saved}
             ${expression.result} = null
@@ -787,7 +787,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
           const ${expression.results} = []
           while (true) {
             const ${expression.saved} = offset
-            ${emitExpression(expression.expression)}
+            ${emitJsExpression(expression.expression)}
             if (${expression.expression.result} === err) {
               offset = ${expression.saved}
               break
@@ -799,14 +799,14 @@ const emitJs = (grammar: ResolvedGrammar) => {
       }
       case 'One': {
         return `
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           if (${expression.expression.result} === err) {
             ${expression.result} = err
           } else {
             const ${expression.results} = [${expression.expression.result}]
             while (true) {
               const ${expression.saved} = offset
-              ${emitExpression(expression.expression)}
+              ${emitJsExpression(expression.expression)}
               if (${expression.expression.result} === err) {
                 offset = ${expression.saved}
                 break
@@ -826,14 +826,14 @@ const emitJs = (grammar: ResolvedGrammar) => {
             const ${expression.saved2} = offset
             ${expression.separator === undefined ? '' : `
               if (${expression.count} > 0) {
-                ${emitExpression(expression.separator)}
+                ${emitJsExpression(expression.separator)}
                 if (${expression.separator.result} === err) {
                   offset = ${expression.saved2}
                   break
                 }
               }
             `}
-            ${emitExpression(expression.expression)}
+            ${emitJsExpression(expression.expression)}
             if (${expression.expression.result} === err) {
               offset = ${expression.saved2}
               break
@@ -855,7 +855,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       case 'Except': {
         return `
           const ${expression.saved} = offset
-          ${emitExpression(expression.expression)}
+          ${emitJsExpression(expression.expression)}
           offset = ${expression.saved}
           if (${expression.expression.result} === err && offset < input.length) {
             ${expression.result} = input.charAt(offset++)
@@ -904,7 +904,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
                   const nextLevel = next / indentSize
                   if (nextLevel > indent[indent.length - 1]) {
                     indent.push(nextLevel)
-                    ${emitExpression(expression.expression)}
+                    ${emitJsExpression(expression.expression)}
                     indent.pop()
                     if (indent.length === 1) {
                       indentSize = undefined
@@ -988,7 +988,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       }
     }
   }
-  const emitRule = (rule: ResolvedRule) => {
+  const emitJsRule = (rule: ResolvedRule) => {
     const results = [...Array(rule.resultCount).keys()].map(key => `result${key + 1}`).join(', ')
     if (!rule.isLeftRecursive) {
       return `
@@ -1002,7 +1002,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
             return entry.result
           }
           let ${results}
-          ${emitExpression(rule.expression)}
+          ${emitJsExpression(rule.expression)}
           cache.${rule.name}[key] = { offset, indent: indent.slice(), indentSize, result: ${rule.expression.result} }
           return ${rule.expression.result}
         }
@@ -1038,7 +1038,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         memo[key] = { offset: start, indent: indent.slice(), indentSize, result, growing: true }
         while (true) {
           offset = start
-          ${emitExpression(rule.expression)}
+          ${emitJsExpression(rule.expression)}
           if (${rule.expression.result} === err) {
             break
           }
@@ -1061,7 +1061,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
       }
     `
   }
-  const rules = grammar.rules.map(emitRule).join('')
+  const rules = grammar.rules.map(emitJsRule).join('')
   const cache = grammar.rules.map(rule => `${rule.name}: {}`).join(', ')
   return `
     class ParseError extends Error {
@@ -1124,13 +1124,13 @@ const emitJs = (grammar: ResolvedGrammar) => {
 
 // SECTION: emitPhp
 const emitPhp = (grammar: ResolvedGrammar) => {
-  const emitExpression = (expression: ResolvedExpression): string => {
+  const emitPhpExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
       case 'Choice': {
         let buffer = `$${expression.result} = $this->err;`
         for (const e of expression.expressions.toReversed()) {
           buffer = `
-            ${emitExpression(e)}
+            ${emitPhpExpression(e)}
             if ($${e.result} === $this->err) {
               $this->offset = $${expression.saved};
               ${buffer}
@@ -1159,7 +1159,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
             : []
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           if ($${expression.expression.result} === $this->err) {
             $${expression.result} = $this->err;
           } else {
@@ -1183,7 +1183,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
         }
         for (const e of expression.expressions.toReversed()) {
           buffer = `
-            ${emitExpression(e)}
+            ${emitPhpExpression(e)}
             if ($${e.result} === $this->err) {
               $${expression.result} = $this->err;
             } else {
@@ -1194,12 +1194,12 @@ const emitPhp = (grammar: ResolvedGrammar) => {
         return buffer
       }
       case 'Field': case 'Extract': {
-        return emitExpression(expression.expression)
+        return emitPhpExpression(expression.expression)
       }
       case 'Text': {
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           if ($${expression.expression.result} === $this->err) {
             $${expression.result} = $this->err;
           } else {
@@ -1210,7 +1210,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       case 'And': {
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           $this->offset = $${expression.saved};
           if ($${expression.expression.result} === $this->err) {
             $${expression.result} = $this->err;
@@ -1222,7 +1222,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       case 'Not': {
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           $this->offset = $${expression.saved};
           if ($${expression.expression.result} === $this->err) {
             $${expression.result} = null;
@@ -1234,7 +1234,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       case 'Optional': {
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           if ($${expression.expression.result} === $this->err) {
             $this->offset = $${expression.saved};
             $${expression.result} = null;
@@ -1248,7 +1248,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
           $${expression.results} = [];
           while (true) {
             $${expression.saved} = $this->offset;
-            ${emitExpression(expression.expression)}
+            ${emitPhpExpression(expression.expression)}
             if ($${expression.expression.result} === $this->err) {
               $this->offset = $${expression.saved};
               break;
@@ -1260,14 +1260,14 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       }
       case 'One': {
         return `
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           if ($${expression.expression.result} === $this->err) {
             $${expression.result} = $this->err;
           } else {
             $${expression.results} = [$${expression.expression.result}];
             while (true) {
               $${expression.saved} = $this->offset;
-              ${emitExpression(expression.expression)}
+              ${emitPhpExpression(expression.expression)}
               if ($${expression.expression.result} === $this->err) {
                 $this->offset = $${expression.saved};
                 break;
@@ -1287,14 +1287,14 @@ const emitPhp = (grammar: ResolvedGrammar) => {
             $${expression.saved2} = $this->offset;
             ${expression.separator === undefined ? '' : `
               if ($${expression.count} > 0) {
-                ${emitExpression(expression.separator)}
+                ${emitPhpExpression(expression.separator)}
                 if ($${expression.separator.result} === $this->err) {
                   $this->offset = $${expression.saved2};
                   break;
                 }
               }
             `}
-            ${emitExpression(expression.expression)}
+            ${emitPhpExpression(expression.expression)}
             if ($${expression.expression.result} === $this->err) {
               $this->offset = $${expression.saved2};
               break;
@@ -1316,7 +1316,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       case 'Except': {
         return `
           $${expression.saved} = $this->offset;
-          ${emitExpression(expression.expression)}
+          ${emitPhpExpression(expression.expression)}
           $this->offset = $${expression.saved};
           if ($${expression.expression.result} === $this->err && $this->offset < strlen($this->input)) {
             $${expression.result} = $this->input[$this->offset++];
@@ -1365,7 +1365,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
                   $nextLevel = $next / $this->indentSize;
                   if ($nextLevel > $this->indent[count($this->indent) - 1]) {
                     array_push($this->indent, $nextLevel);
-                    ${emitExpression(expression.expression)}
+                    ${emitPhpExpression(expression.expression)}
                     array_pop($this->indent);
                     if (count($this->indent) === 1) {
                       $this->indentSize = null;
@@ -1432,7 +1432,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       }
     }
   }
-  const emitRule = (rule: ResolvedRule) => {
+  const emitPhpRule = (rule: ResolvedRule) => {
     if (!rule.isLeftRecursive) {
       return `
         private function parse${rule.name}() {
@@ -1444,7 +1444,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
             $this->indentSize = $entry['indentSize'];
             return $entry['result'];
           }
-          ${emitExpression(rule.expression)}
+          ${emitPhpExpression(rule.expression)}
           $this->cache['${rule.name}'][$key] = ['offset' => $this->offset, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $${rule.expression.result}];
           return $${rule.expression.result};
         }
@@ -1479,7 +1479,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
         $this->cache['${rule.name}'][$key] = ['offset' => $start, 'indent' => $this->indent, 'indentSize' => $this->indentSize, 'result' => $result, 'growing' => true];
         while (true) {
           $this->offset = $start;
-          ${emitExpression(rule.expression)}
+          ${emitPhpExpression(rule.expression)}
           if ($${rule.expression.result} === $this->err) {
             break;
           }
@@ -1509,7 +1509,7 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       }
     `
   }
-  const rules = grammar.rules.map(emitRule).join('')
+  const rules = grammar.rules.map(emitPhpRule).join('')
   return `
     class PackratParseError extends RuntimeException {
       public $location;
