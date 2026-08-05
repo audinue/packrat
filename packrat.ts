@@ -162,6 +162,129 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
 
 const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.expression)
 
+const isNode = (value: unknown): value is Node => {
+  return value !== null && typeof value === 'object' && 'tag' in value && typeof value.tag === 'string'
+}
+
+// SECTION: parseGrammar
+const parseGrammar = (value: Ok): Grammar => {
+  if (!isNode(value)) {
+    throw new Error()
+  }
+  if (value.tag !== 'Grammar') {
+    throw new Error('Invalid value')
+  }
+  if (!Array.isArray(value.rules)) {
+    throw new Error('Invalid value')
+  }
+  const parseExpression = (value: Ok): Expression => {
+    if (!isNode(value)) {
+      throw new Error('Invalid value')
+    }
+    switch (value.tag) {
+      case 'Choice': case 'Sequence': {
+        if (!Array.isArray(value.expressions)) {
+          throw new Error('Invalid value')
+        }
+        return { tag: value.tag, expressions: value.expressions.map(parseExpression) }
+      }
+      case 'Node': case 'Field': {
+        if (!isNode(value.expression) || typeof value.name !== 'string') {
+          throw new Error('Invalid value')
+        }
+        return { tag: value.tag, name: value.name, expression: parseExpression(value.expression) }
+      }
+      case 'Extract': case 'Text': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Except': case 'Indent': {
+        if (!isNode(value.expression)) {
+          throw new Error('Invalid value')
+        }
+        return { tag: value.tag, expression: parseExpression(value.expression) }
+      }
+      case 'Repeat': {
+        if (!isNode(value.expression) || typeof value.min !== 'string' || (typeof value.max !== 'string' && value.max !== null) || (!isNode(value.separator) && value.separator !== null)) {
+          throw new Error('Invalid value')
+        }
+        return {
+          tag: 'Repeat',
+          expression: parseExpression(value.expression),
+          min: parseInt(value.min),
+          max: value.max === null ? undefined : parseInt(value.max),
+          separator: value.separator === null ? undefined : parseExpression(value.separator)
+        }
+      }
+      case 'Reference': {
+        if (typeof value.name !== 'string') {
+          throw new Error('Invalid value')
+        }
+        return { tag: 'Reference', name: value.name }
+      }
+      case 'Class': {
+        if (!Array.isArray(value.predicates)) {
+          throw new Error('Invalid value')
+        }
+        const predicates = value.predicates.map(value => {
+          if (!isNode(value)) {
+            throw new Error()
+          }
+          switch (value.tag) {
+            case 'Equal':
+              if (typeof value.value !== 'string') {
+                throw new Error('Invalid value')
+              }
+              return { tag: 'Equal' as const, value: JSON.parse(`"${value.value}"`) }
+            case 'Between':
+              if (typeof value.min !== 'string' || typeof value.max !== 'string') {
+                throw new Error('Invalid value')
+              }
+              return { tag: 'Between' as const, min: JSON.parse(`"${value.min}"`), max: JSON.parse(`"${value.max}"`) }
+            default:
+              throw new Error('Invalid value')
+          }
+        })
+        return { tag: 'Class', predicates, insensitive: value.insensitive === 'i' ? true : undefined, negation: value.negation === '^' ? true : undefined }
+      }
+      case 'Literal': {
+        if (typeof value.value !== 'string') {
+          throw new Error('Invalid value')
+        }
+        return { tag: 'Literal', value: JSON.parse(value.value), insensitive: value.insensitive === 'i' ? true : undefined }
+      }
+      case 'Any':
+        return { tag: 'Any' }
+      default:
+        throw new Error('Invalid value')
+    }
+  }
+  const rules = value.rules.map(value => {
+    if (!isNode(value)) {
+      throw new Error()
+    }
+    if (value.tag !== 'Rule') {
+      throw new Error('Invalid value')
+    }
+    if (typeof value.name !== 'string') {
+      throw new Error('Invalid value')
+    }
+    if (!isNode(value.expression)) {
+      throw new Error('Invalid value')
+    }
+    return { name: value.name, expression: parseExpression(value.expression) }
+  })
+  for (const [index, rule] of rules.entries()) {
+    if (rules.findIndex(r => r.name === rule.name) !== index) {
+      throw new Error('Duplicate rule ' + rule.name)
+    }
+  }
+  const ruleNames = new Set(rules.map(rule => rule.name))
+  const references = rules.flatMap(getRuleExpressions).filter(expression => expression.tag === 'Reference')
+  for (const reference of references) {
+    if (!ruleNames.has(reference.name)) {
+      throw new Error('Unknown rule ' + reference.name)
+    }
+  }
+  return { rules }
+}
+
 // SECTION: evaluateGrammar
 const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
   const rules = Object.fromEntries(grammar.rules.map(rule => [rule.name, rule]))
@@ -1457,129 +1580,6 @@ const emitPhp = (grammar: ResolvedGrammar) => {
       }
     }
   `
-}
-
-const isNode = (value: unknown): value is Node => {
-  return value !== null && typeof value === 'object' && 'tag' in value && typeof value.tag === 'string'
-}
-
-// SECTION: parseGrammar
-const parseGrammar = (value: Ok): Grammar => {
-  if (!isNode(value)) {
-    throw new Error()
-  }
-  if (value.tag !== 'Grammar') {
-    throw new Error('Invalid value')
-  }
-  if (!Array.isArray(value.rules)) {
-    throw new Error('Invalid value')
-  }
-  const parseExpression = (value: Ok): Expression => {
-    if (!isNode(value)) {
-      throw new Error('Invalid value')
-    }
-    switch (value.tag) {
-      case 'Choice': case 'Sequence': {
-        if (!Array.isArray(value.expressions)) {
-          throw new Error('Invalid value')
-        }
-        return { tag: value.tag, expressions: value.expressions.map(parseExpression) }
-      }
-      case 'Node': case 'Field': {
-        if (!isNode(value.expression) || typeof value.name !== 'string') {
-          throw new Error('Invalid value')
-        }
-        return { tag: value.tag, name: value.name, expression: parseExpression(value.expression) }
-      }
-      case 'Extract': case 'Text': case 'And': case 'Not': case 'Optional': case 'Zero': case 'One': case 'Except': case 'Indent': {
-        if (!isNode(value.expression)) {
-          throw new Error('Invalid value')
-        }
-        return { tag: value.tag, expression: parseExpression(value.expression) }
-      }
-      case 'Repeat': {
-        if (!isNode(value.expression) || typeof value.min !== 'string' || (typeof value.max !== 'string' && value.max !== null) || (!isNode(value.separator) && value.separator !== null)) {
-          throw new Error('Invalid value')
-        }
-        return {
-          tag: 'Repeat',
-          expression: parseExpression(value.expression),
-          min: parseInt(value.min),
-          max: value.max === null ? undefined : parseInt(value.max),
-          separator: value.separator === null ? undefined : parseExpression(value.separator)
-        }
-      }
-      case 'Reference': {
-        if (typeof value.name !== 'string') {
-          throw new Error('Invalid value')
-        }
-        return { tag: 'Reference', name: value.name }
-      }
-      case 'Class': {
-        if (!Array.isArray(value.predicates)) {
-          throw new Error('Invalid value')
-        }
-        const predicates = value.predicates.map(value => {
-          if (!isNode(value)) {
-            throw new Error()
-          }
-          switch (value.tag) {
-            case 'Equal':
-              if (typeof value.value !== 'string') {
-                throw new Error('Invalid value')
-              }
-              return { tag: 'Equal' as const, value: JSON.parse(`"${value.value}"`) }
-            case 'Between':
-              if (typeof value.min !== 'string' || typeof value.max !== 'string') {
-                throw new Error('Invalid value')
-              }
-              return { tag: 'Between' as const, min: JSON.parse(`"${value.min}"`), max: JSON.parse(`"${value.max}"`) }
-            default:
-              throw new Error('Invalid value')
-          }
-        })
-        return { tag: 'Class', predicates, insensitive: value.insensitive === 'i' ? true : undefined, negation: value.negation === '^' ? true : undefined }
-      }
-      case 'Literal': {
-        if (typeof value.value !== 'string') {
-          throw new Error('Invalid value')
-        }
-        return { tag: 'Literal', value: JSON.parse(value.value), insensitive: value.insensitive === 'i' ? true : undefined }
-      }
-      case 'Any':
-        return { tag: 'Any' }
-      default:
-        throw new Error('Invalid value')
-    }
-  }
-  const rules = value.rules.map(value => {
-    if (!isNode(value)) {
-      throw new Error()
-    }
-    if (value.tag !== 'Rule') {
-      throw new Error('Invalid value')
-    }
-    if (typeof value.name !== 'string') {
-      throw new Error('Invalid value')
-    }
-    if (!isNode(value.expression)) {
-      throw new Error('Invalid value')
-    }
-    return { name: value.name, expression: parseExpression(value.expression) }
-  })
-  for (const [index, rule] of rules.entries()) {
-    if (rules.findIndex(r => r.name === rule.name) !== index) {
-      throw new Error('Duplicate rule ' + rule.name)
-    }
-  }
-  const ruleNames = new Set(rules.map(rule => rule.name))
-  const references = rules.flatMap(getRuleExpressions).filter(expression => expression.tag === 'Reference')
-  for (const reference of references) {
-    if (!ruleNames.has(reference.name)) {
-      throw new Error('Unknown rule ' + reference.name)
-    }
-  }
-  return { rules }
 }
 
 // SECTION: packratGrammar
