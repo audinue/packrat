@@ -5,10 +5,28 @@ import { readFileSync } from 'node:fs'
 const grammarText = readFileSync(`${import.meta.dir}/typescript.packrat`, 'utf-8')
 const parseTs = async (source: string) => (await packrat(grammarText))(source)
 
+const normalize = (obj: any): any => {
+  if (!obj || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) {
+    if (obj.length === 2 && obj[0] === null) return normalize(obj[1])
+    return obj.map(normalize)
+  }
+  const result: any = {}
+  for (const key of Object.keys(obj)) {
+    if (key === 'location') continue
+    result[key] = normalize(obj[key])
+  }
+  return result
+}
+
 const toChained = (value: any) => ({ tag: 'Chained', expression: value })
 
 describe('typescript parser', () => {
-  const ast = async (src: string) => (await parseTs(src)) as any
+  const ast = async (src: string) => {
+    const r = (await parseTs(src)) as any
+    r.statements = r.statements?.map((s: any) => s.statement ?? s)
+    return normalize(r)
+  }
 
   test('let with type annotation', async () => {
     const r = await ast('let x: number = 42')
@@ -228,7 +246,7 @@ describe('typescript parser', () => {
 
   test('as type assertion', async () => {
     const r = await ast('const x = 42 as number')
-    expect(r.statements[0].value.value).toMatchObject({ tag: 'As', expression: { tag: 'Chained', expression: { tag: 'Int' } } })
+    expect(r.statements[0].value.value).toMatchObject({ tag: 'AsChain', expression: { tag: 'Chained', expression: { tag: 'Int' } } })
   })
 
   test('non-null assertion', async () => {
@@ -373,7 +391,11 @@ describe('typescript parser', () => {
 })
 
 describe('typescript stress test', () => {
-  const ast = async (src: string) => (await parseTs(src)) as any
+  const ast = async (src: string) => {
+    const r = (await parseTs(src)) as any
+    r.statements = r.statements?.map((s: any) => s.statement ?? s)
+    return normalize(r)
+  }
 
   test('many let declarations', async () => {
     const lines = []

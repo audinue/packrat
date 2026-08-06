@@ -45,7 +45,7 @@ ClassDecl = CLASS __ name:Id typeParams:TypeParams? extends:ClassExtends? implem
 ClassExtends = _ EXTENDS __ name:TypeRef -> ClassExtends
 ClassImplements = _ IMPLEMENTS __ types:TypeRef { 1 ; _ COMMA _ } _ COMMA? -> ClassImplements
 ClassBody = LBRACE _ members:ClassMember { 0 ; _ } _ RBRACE -> ClassBody
-ClassMember = method:ClassMethod -> ClassMethod / property:ClassProperty -> ClassProperty
+ClassMember = method:ClassMethod -> ClassMethod / property:ClassProperty _ SEMI? -> ClassProperty
 ClassProperty = accessModifier:(AccessModifier _)? name:Id typeAnnotation:TypeAnnotation? value:VarValue? -> ClassProperty
 ClassMethod = accessModifier:(AccessModifier _)? star:GeneratorStar? name:Id typeParams:TypeParams? _ LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? _ body:Block -> Method
 AccessModifier = PUBLIC / PRIVATE / PROTECTED / READONLY
@@ -112,7 +112,7 @@ AwaitExpr = AWAIT __ value:Expression -> AwaitExpr
 YieldExpr = YIELD __ value:Expression -> YieldExpr
 VoidExpr = VOID __ value:Expression -> VoidExpr
 
-AsExpr = expression:PostfixExpr tail:AsTail* -> AsChain / PostfixExpr
+AsExpr = expression:PostfixExpr tail:AsTail+ -> AsChain / PostfixExpr
 AsTail = _ AS __ type:TypeExpression -> AsTail
 PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
 PostfixTail = _ LBRACKET _ index:Expression _ RBRACKET -> Index / _ DOT _ name:Id -> Member / _ QUESTION DOT _ name:Id -> OptionalMember / _ QUESTION LBRACKET _ index:Expression _ RBRACKET -> OptionalIndex / _ QUESTION LPAREN _ args:ArgList? _ RPAREN -> OptionalCall / _ op:PostfixOp -> Postfix / _ BANG -> NonNull / _ LPAREN _ args:ArgList? _ RPAREN -> Call
