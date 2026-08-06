@@ -722,20 +722,24 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     grammar.rules.map((rule) => [
       rule.name,
       {} as Record<
-        string,
-        {
-          offset: number;
-          indent: number[];
-          indentKey: string;
-          indentSize: number | undefined;
-          result: Value | Err;
-          growing: boolean;
-        }
+        number,
+        Record<
+          string,
+          {
+            offset: number;
+            indent: number[];
+            indentKey: string;
+            indentSize: number | undefined;
+            result: Value | Err;
+            growing: boolean;
+          }
+        >
       >,
     ]),
   );
   const stack = [] as {
-    key: string;
+    start: number;
+    indentKey: string;
     name: string;
     involved: Set<string> | null;
   }[];
@@ -780,12 +784,12 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
   };
   const evaluateRule = (name: string): Value | Err => {
     const start = offset;
-    const key = start + "@" + indentKey;
+    const startIndentKey = indentKey;
     const memo = cache[name]!;
-    const entry = memo[key];
+    const entry = memo[start]?.[startIndentKey];
     if (entry) {
       if (entry.growing) {
-        const index = stack.findIndex((e) => e.key === key);
+        const index = stack.findIndex((e) => e.start === start && e.indentKey === startIndentKey);
         if (index !== -1) {
           const owner = stack[index]!;
           owner.involved ??= new Set();
@@ -829,14 +833,14 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     }
     if (!rule.isLeftRecursive) {
       const result = evaluateExpression(rule.expression);
-      memo[key] = {
+      ;(memo[start] ??= {})[startIndentKey] = {
         offset,
         indent: indent.slice(),
         indentKey,
         indentSize,
         result,
         growing: false,
-      };
+      }
       if (options.trace) {
         const tag = result === err ? "ERR" : "OK";
         console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
@@ -844,11 +848,11 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       if (offset > rightmostOffset) rightmostOffset = offset;
       return result;
     }
-    const frame = { key, name, involved: null };
+    const frame = { name, involved: null, start, indentKey: startIndentKey };
     stack.push(frame);
     let result: Value | Err = err;
     let endPos = start;
-    memo[key] = {
+    ;(memo[start] ??= {})[startIndentKey] = {
       offset: start,
       indent: indent.slice(),
       indentKey,
@@ -868,7 +872,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
       result = attempt;
       endPos = attemptEnd;
-      memo[key] = {
+      ;(memo[start] ??= {})[startIndentKey] = {
         offset: endPos,
         indent: indent.slice(),
         indentKey,
@@ -879,9 +883,9 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     }
     stack.pop();
     if (stack.some((e) => e.involved?.has(name))) {
-      delete memo[key];
+      delete memo[start][startIndentKey];
     } else {
-      memo[key] = {
+      ;(memo[start] ??= {})[startIndentKey] = {
         offset: endPos,
         indent: indent.slice(),
         indentKey,
@@ -1178,7 +1182,7 @@ const _err = Symbol("err");
 
 type _Err = typeof _err;
 
-type _StackFrame = { key: string; name: string; involved: Set<string> | null };
+type _StackFrame = { start: number; indentKey: string; name: string; involved: Set<string> | null };
 
 type _MemoEntry = {
   offset: number;
@@ -1195,7 +1199,7 @@ type _ParseContext = {
   indent: number[];
   indentKey: string;
   indentSize: number | undefined;
-  memo: Record<string, Record<string, _MemoEntry>>;
+  memo: Record<string, Record<number, Record<string, _MemoEntry>>>;
   stack: _StackFrame[];
   getLocation: (offset: number) => Location;
   parseRule: (name: string) => Value | _Err;
@@ -2092,12 +2096,12 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
         const expression = rule.expression;
         rule.parse = (context) => {
           const start = context.offset;
-          const key = start + "@" + context.indentKey;
+          const startIndentKey = context.indentKey;
           const ruleMemo = (context.memo[name] ??= {});
-          const entry = ruleMemo[key];
+          const entry = ruleMemo[start]?.[startIndentKey];
           if (entry) {
             if (entry.growing) {
-              const index = stack.findIndex((e) => e.key === key);
+              const index = stack.findIndex((e) => e.start === start && e.indentKey === startIndentKey);
               if (index !== -1) {
                 const owner = stack[index]!;
                 owner.involved ??= new Set();
@@ -2112,11 +2116,11 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             context.indentSize = entry.indentSize;
             return entry.result;
           }
-          const frame = { key, name, involved: null };
+    const frame = { name, involved: null, start, indentKey: startIndentKey };
           stack.push(frame);
           let result: Value | _Err = _err;
           let endPos = start;
-          ruleMemo[key] = {
+          ;(ruleMemo[start] ??= {})[startIndentKey] = {
             offset: start,
             indent: context.indent.slice(),
             indentKey: context.indentKey,
@@ -2132,7 +2136,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             if (result !== _err && attemptEnd <= endPos) break;
             result = attempt;
             endPos = attemptEnd;
-            ruleMemo[key] = {
+            ;(ruleMemo[start] ??= {})[startIndentKey] = {
               offset: endPos,
               indent: context.indent.slice(),
               indentKey: context.indentKey,
@@ -2143,9 +2147,9 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
           }
           stack.pop();
           if (stack.some((e) => e.involved?.has(name))) {
-            delete ruleMemo[key];
+            delete ruleMemo[start][startIndentKey];
           } else {
-            ruleMemo[key] = {
+            ;(ruleMemo[start] ??= {})[startIndentKey] = {
               offset: endPos,
               indent: context.indent.slice(),
               indentKey: context.indentKey,
@@ -2165,9 +2169,9 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
         const expression = rule.expression;
         rule.parse = (context) => {
           const start = context.offset;
-          const key = start + "@" + context.indentKey;
+          const startIndentKey = context.indentKey;
           const ruleMemo = (context.memo[name] ??= {});
-          const entry = ruleMemo[key];
+          const entry = ruleMemo[start]?.[startIndentKey];
           if (entry) {
             context.offset = entry.offset;
             context.indent = entry.indent.slice();
@@ -2176,7 +2180,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             return entry.result;
           }
           const result = expression.parse(context);
-          ruleMemo[key] = {
+          ;(ruleMemo[start] ??= {})[startIndentKey] = {
             offset: context.offset,
             indent: context.indent.slice(),
             indentKey: context.indentKey,
