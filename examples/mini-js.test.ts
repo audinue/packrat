@@ -39,7 +39,7 @@ describe('mini-js parser', () => {
   test('IfStmt with Gt condition (binary op, no Chained wrap)', async () => {
     expect(await ast('if (x > 3) { const y = 1 }')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'IfStmt', condition: { tag: 'Gt', left: { tag: 'Chained' } }, body: [{ tag: 'VarDecl' }] }]
+      statements: [{ tag: 'IfStmt', condition: { tag: 'Rel', head: { tag: 'Chained' }, tail: [{ op: '>' }] }, body: [{ tag: 'VarDecl' }] }]
     })
   })
 
@@ -53,7 +53,7 @@ describe('mini-js parser', () => {
   test('While loop', async () => {
     expect(await ast('while (n > 0) { n = n - 1 }')).toMatchObject({
       tag: 'Program',
-      statements: [{ tag: 'While', condition: { tag: 'Gt', left: { tag: 'Chained' } } }]
+      statements: [{ tag: 'While', condition: { tag: 'Rel', head: { tag: 'Chained' }, tail: [{ op: '>' }] } }]
     })
   })
 
@@ -63,7 +63,7 @@ describe('mini-js parser', () => {
       statements: [{
         tag: 'For',
         init: { tag: 'VarDecl', name: 'i' },
-        condition: { tag: 'Lt' },
+        condition: { tag: 'Rel', tail: [{ op: '<' }] },
         update: { tag: 'Chained', expression: { tag: 'Ident', name: 'i' }, tail: [{ tag: 'Postfix', op: '++' }] }
       }]
     })
@@ -73,7 +73,7 @@ describe('mini-js parser', () => {
     const a = await ast('for (; i < 2; i++) { console.log(i) }')
     expect(a).toMatchObject({
       tag: 'Program',
-      statements: [{ condition: { tag: 'Lt' } }]
+      statements: [{ condition: { tag: 'Rel', tail: [{ op: '<' }] } }]
     })
     expect((a as any).statements[0].init).toBeNull()
   })
@@ -212,42 +212,42 @@ describe('mini-js parser', () => {
   test('Add expression (binary op, no Chained wrap at top)', async () => {
     expect(await ast('const x = 3 + 4')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Add', left: { tag: 'Chained', expression: { tag: 'Int', value: '3' } }, right: { tag: 'Chained', expression: { tag: 'Int', value: '4' } } } }]
+      statements: [{ value: { tag: 'Add', head: { tag: 'Chained', expression: { tag: 'Int', value: '3' } }, tail: [{ op: '+', right: { tag: 'Chained', expression: { tag: 'Int', value: '4' } } }] } }]
     })
   })
 
   test('Sub expression', async () => {
     expect(await ast('const x = 10 - 3')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Sub' } }]
+      statements: [{ value: { tag: 'Add', tail: [{ op: '-' }] } }]
     })
   })
 
   test('Mul expression', async () => {
     expect(await ast('const x = 3 * 4')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Mul' } }]
+      statements: [{ value: { tag: 'Mul', tail: [{ op: '*' }] } }]
     })
   })
 
   test('Div expression', async () => {
     expect(await ast('const x = 10 / 2')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Div' } }]
+      statements: [{ value: { tag: 'Mul', tail: [{ op: '/' }] } }]
     })
   })
 
   test('Mod expression', async () => {
     expect(await ast('const x = 7 % 2')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Mod' } }]
+      statements: [{ value: { tag: 'Mul', tail: [{ op: '%' }] } }]
     })
   })
 
-  test('left associative subtraction', async () => {
+  test('operator chain jadi flat list', async () => {
     expect(await ast('const x = 10 - 3 - 2')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Sub', left: { tag: 'Sub' }, right: { tag: 'Chained', expression: { tag: 'Int', value: '2' } } } }]
+      statements: [{ value: { tag: 'Add', head: { tag: 'Chained', expression: { tag: 'Int', value: '10' } }, tail: [{ op: '-', right: { tag: 'Chained', expression: { tag: 'Int', value: '3' } } }, { op: '-', right: { tag: 'Chained', expression: { tag: 'Int', value: '2' } } }] } }]
     })
   })
 
@@ -268,46 +268,46 @@ describe('mini-js parser', () => {
   test('equality', async () => {
     expect(await ast('const x = 3 === 3')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'StrictEq', left: { tag: 'Chained', expression: { tag: 'Int', value: '3' } }, right: { tag: 'Chained', expression: { tag: 'Int', value: '3' } } } }]
+      statements: [{ value: { tag: 'Eq', head: { tag: 'Chained', expression: { tag: 'Int', value: '3' } }, tail: [{ op: '===', right: { tag: 'Chained', expression: { tag: 'Int', value: '3' } } }] } }]
     })
   })
 
   test('loose equality', async () => {
     expect(await ast('const x = 3 == 3')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Eq' } }]
+      statements: [{ value: { tag: 'Eq', tail: [{ op: '==' }] } }]
     })
   })
 
   test('inequality', async () => {
     expect(await ast('const x = 3 !== 4')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'StrictNeq' } }]
+      statements: [{ value: { tag: 'Eq', tail: [{ op: '!==' }] } }]
     })
   })
 
   test('comparison operators', async () => {
     expect(await ast('const x = 3 < 5')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Lt' } }]
+      statements: [{ value: { tag: 'Rel', tail: [{ op: '<' }] } }]
     })
     expect(await ast('const x = 5 > 3')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Gt' } }]
+      statements: [{ value: { tag: 'Rel', tail: [{ op: '>' }] } }]
     })
   })
 
   test('logical and', async () => {
     expect(await ast('const x = true && false')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'And', left: { tag: 'Chained', expression: { tag: 'Bool', value: 'true' } }, right: { tag: 'Chained', expression: { tag: 'Bool', value: 'false' } } } }]
+      statements: [{ value: { tag: 'And', head: { tag: 'Chained', expression: { tag: 'Bool', value: 'true' } }, tail: [{ right: { tag: 'Chained', expression: { tag: 'Bool', value: 'false' } } }] } }]
     })
   })
 
   test('logical or', async () => {
     expect(await ast('const x = false || true')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Or' } }]
+      statements: [{ value: { tag: 'Or', tail: [{ right: { tag: 'Chained', expression: { tag: 'Bool', value: 'true' } } }] } }]
     })
   })
 
@@ -342,14 +342,14 @@ describe('mini-js parser', () => {
   test('operator precedence (Add + Mul)', async () => {
     expect(await ast('const x = 2 + 3 * 4')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Add', right: { tag: 'Mul' } } }]
+      statements: [{ value: { tag: 'Add', tail: [{ right: { tag: 'Mul' } }] } }]
     })
   })
 
   test('parentheses override precedence', async () => {
     expect(await ast('const x = (2 + 3) * 4')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Mul', left: { tag: 'Chained', expression: { tag: 'Add' } }, right: { tag: 'Chained', expression: { tag: 'Int', value: '4' } } } }]
+      statements: [{ value: { tag: 'Mul', head: { tag: 'Chained', expression: { tag: 'Add' } }, tail: [{ right: { tag: 'Chained', expression: { tag: 'Int', value: '4' } } }] } }]
     })
   })
 
@@ -374,7 +374,7 @@ describe('mini-js parser', () => {
   test('complex nested expression', async () => {
     expect(await ast('const x = (a + b) * (c - d)')).toMatchObject({
       tag: 'Program',
-      statements: [{ value: { tag: 'Mul', left: { tag: 'Chained', expression: { tag: 'Add' } }, right: { tag: 'Chained', expression: { tag: 'Sub' } } } }]
+      statements: [{ value: { tag: 'Mul', head: { tag: 'Chained', expression: { tag: 'Add' } }, tail: [{ right: { tag: 'Chained', expression: { tag: 'Add', tail: [{ op: '-' }] } } }] } }]
     })
   })
 })

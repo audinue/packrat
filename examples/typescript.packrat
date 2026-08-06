@@ -1,0 +1,291 @@
+Program = _ statements:StatementWithSep* _ -> Program
+StatementWithSep = statement:Statement _ SEMI? _ -> StatementWithSep
+
+Statement = ImportDecl / ExportDecl / DecoratedStmt / TypeAlias / InterfaceDecl / EnumDecl / ClassDecl / FuncDecl / YieldStmt / SwitchStmt / TryStmt / ThrowStmt / VarDecl / AssignStmt / IfStmt / WhileStmt / ForStmt / ForOfStmt / ForInStmt / ReturnStmt / BreakStmt / ContinueStmt / ExprStmt
+Block = LBRACE _ body:Statement { 0 ; _ SEMI? _ } _ SEMI? _ RBRACE -> Block
+
+VarDecl = keyword:(CONST / LET / VAR) __ name:Uid typeAnnotation:(DefiniteAnnotation / TypeAnnotation)? value:VarValue? -> VarDecl
+DefiniteAnnotation = _ BANG _ COLON _ type:TypeExpression -> TypeAnnotation
+VarValue = _ ASSIGN _ value:Expression -> VarValue
+AssignStmt = name:Id _ ASSIGN _ value:Expression -> AssignStmt
+IfStmt = IF _ LPAREN _ condition:Expression _ RPAREN _ body:(Block / Statement) _ else:Else? -> IfStmt
+Else = ELSE _ body:(Block / IfStmt) -> Else
+WhileStmt = WHILE _ LPAREN _ condition:Expression _ RPAREN _ body:(Block / Statement) -> While
+ForStmt = FOR _ LPAREN _ init:ForInit? _ SEMI _ condition:Expression? _ SEMI _ update:ForUpdate? _ RPAREN _ body:(Block / Statement) -> For
+ForOfStmt = FOR _ AWAIT? _ LPAREN _ keyword:(CONST / LET) __ name:(ObjectDestructure / ArrayDestructure / Uid) _ OF __ value:Expression _ RPAREN _ body:(Block / Statement) -> ForOf
+ForInStmt = FOR _ LPAREN _ keyword:(CONST / LET / VAR) __ name:(ObjectDestructure / ArrayDestructure / Uid) _ IN __ value:Expression _ RPAREN _ body:(Block / Statement) -> ForIn
+ArrayDestructure = LBRACKET _ names:Uid { 1 ; _ COMMA _ } _ COMMA? _ RBRACKET -> ArrayDestructure
+ObjectDestructure = LBRACE _ names:Uid { 1 ; _ COMMA _ } _ COMMA? _ RBRACE -> ObjectDestructure
+ForInit = keyword:(CONST / LET) __ name:Id typeAnnotation:TypeAnnotation? _ ASSIGN _ value:Expression -> VarDecl / name:Id _ ASSIGN _ value:Expression -> Assign
+ForUpdate = name:Id _ ASSIGN _ value:Expression -> Assign / Expression
+ReturnStmt = RETURN _ value:Expression? -> Return
+BreakStmt = BREAK -> Break
+ContinueStmt = CONTINUE -> Continue
+ThrowStmt = THROW __ value:Expression -> Throw
+ExprStmt = expression:Expression -> ExprStmt
+
+SwitchStmt = SWITCH _ LPAREN _ discriminant:Expression _ RPAREN _ LBRACE _ cases:CaseClause* _ RBRACE -> Switch
+CaseClause = CASE _ test:Expression _ COLON _ body:(Block / Statement) { 0 ; _ SEMI? _ } _ SEMI? _ -> Case / DEFAULT _ COLON _ body:(Block / Statement) { 0 ; _ SEMI? _ } _ SEMI? _ -> Default
+
+TryStmt = TRY _ body:Block _ handler:CatchClause? _ finalizer:FinallyClause? -> Try
+CatchClause = CATCH _ ( LPAREN _ param:Id typeAnnotation:TypeAnnotation? _ RPAREN _ )? body:Block -> Catch
+FinallyClause = FINALLY _ body:Block -> Finally
+
+FuncDecl = async:AsyncModifier? FUNCTION star:GeneratorStar? __ name:Id typeParams:TypeParams? _ LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? _ body:Block -> FuncDecl
+AsyncModifier = ASYNC __ -> AsyncModifier
+ReturnType = _ COLON _ type:(TypePredicate / TypeExpression) -> ReturnType
+TypePredicate = name:Id _ IS __ type:TypeExpression -> TypePredicate
+ParamList = params:Param { 1 ; _ COMMA _ } _ COMMA? -> ParamList
+Param = SPREAD name:Uid typeAnnotation:TypeAnnotation? -> RestParam / accessModifier:(AccessModifier _)? name:Uid optional:ParamOptional? typeAnnotation:TypeAnnotation? default:DefaultValue? -> Param
+ParamOptional = _ QUESTION -> ParamOptional
+DefaultValue = _ ASSIGN _ value:Expression -> DefaultValue
+TypeAnnotation = _ COLON _ type:TypeExpression -> TypeAnnotation
+
+ClassDecl = CLASS __ name:Id typeParams:TypeParams? extends:ClassExtends? implements:ClassImplements? _ body:ClassBody -> ClassDecl
+ClassExtends = _ EXTENDS __ name:TypeRef -> ClassExtends
+ClassImplements = _ IMPLEMENTS __ types:TypeRef { 1 ; _ COMMA _ } _ COMMA? -> ClassImplements
+ClassBody = LBRACE _ members:ClassMember { 0 ; _ } _ RBRACE -> ClassBody
+ClassMember = method:ClassMethod -> ClassMethod / property:ClassProperty -> ClassProperty
+ClassProperty = accessModifier:(AccessModifier _)? name:Id typeAnnotation:TypeAnnotation? value:VarValue? -> ClassProperty
+ClassMethod = accessModifier:(AccessModifier _)? star:GeneratorStar? name:Id typeParams:TypeParams? _ LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? _ body:Block -> Method
+AccessModifier = PUBLIC / PRIVATE / PROTECTED / READONLY
+GeneratorStar = STAR -> GeneratorStar
+
+DecoratedStmt = decorators:Decorator+ _ statement:(ClassDecl / FuncDecl) -> DecoratedStmt
+Decorator = AT _ name:Id args:DecoratorArgs? -> Decorator
+DecoratorArgs = LPAREN _ args:ArgList? _ RPAREN -> DecoratorArgs
+
+TypeAlias = TYPE __ name:Id typeParams:TypeParams? _ ASSIGN _ PIPE? _ type:TypeExpression -> TypeAlias
+TypeParams = LT _ params:TypeParam { 1 ; _ COMMA _ } _ COMMA? _ GT -> TypeParams
+TypeParam = name:Id constraint:TypeConstraint? default:TypeDefault? -> TypeParam
+TypeConstraint = _ EXTENDS __ type:TypeExpression -> TypeConstraint
+TypeDefault = _ ASSIGN _ type:TypeExpression -> TypeDefault
+TypeArgs = LT _ types:TypeExpression { 1 ; _ COMMA _ } _ COMMA? _ GT -> TypeArgs
+
+InterfaceDecl = INTERFACE __ name:Id typeParams:TypeParams? extends:InterfaceExtends? _ LBRACE _ members:TypeMember? _ RBRACE -> InterfaceDecl
+InterfaceExtends = _ EXTENDS __ types:TypeRef { 1 ; _ COMMA _ } _ COMMA? -> InterfaceExtends
+TypeMember = members:TypeMemberItem { 1 ; _ (SEMI / COMMA) _ } _ (SEMI / COMMA)? -> TypeMember
+TypeMemberItem = LBRACKET _ keyName:Id _ COLON _ keyType:TypeExpression _ RBRACKET _ COLON _ valueType:TypeExpression -> IndexSignature / accessModifier:(AccessModifier _)? name:(Uid / String) optional:QUESTION? _ LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? -> CallSignature / accessModifier:(AccessModifier _)? name:(Uid / String) optional:QUESTION? typeAnnotation:TypeAnnotation? -> TypeProperty
+
+EnumDecl = ENUM __ name:Id _ LBRACE _ members:EnumMember { 0 ; _ COMMA _ } _ COMMA? _ RBRACE -> EnumDecl
+EnumMember = name:Id value:EnumValue? -> EnumMember
+EnumValue = _ ASSIGN _ value:Expression -> EnumValue
+
+ImportDecl = IMPORT __ specifier:ImportSpec _ FROM _ source:String -> ImportDecl
+ImportSpec = name:Id _ COMMA _ LBRACE _ names:ImportName { 1 ; _ COMMA _ } _ COMMA? _ RBRACE -> ImportDefaultNamed / LBRACE _ names:ImportName { 1 ; _ COMMA _ } _ COMMA? _ RBRACE -> ImportNamed / STAR __ AS __ name:Id -> ImportNamespace / name:Id -> ImportDefault
+ImportName = name:Id alias:ImportAlias? -> ImportName
+ImportAlias = _ AS __ name:Id -> ImportAlias
+
+ExportDecl = EXPORT __ DEFAULT __ value:(ClassDecl / FuncDecl / Expression) -> ExportDefault / EXPORT __ LBRACE _ names:ExportName { 1 ; _ COMMA _ } _ COMMA? _ RBRACE _ SEMI? -> ExportNamed / EXPORT __ body:(TypeAlias / InterfaceDecl / EnumDecl / ClassDecl / FuncDecl / VarDecl) -> ExportDecl
+ExportName = TYPE __ name:Uid alias:ExportAlias? -> TypeExportName / name:Uid alias:ExportAlias? -> ExportName
+ExportAlias = _ AS __ name:Uid -> ExportAlias
+
+Expression = AssignExpr
+AssignExpr = left:TernaryExpr _ op:AssignOp _ right:Expression -> Assign / TernaryExpr
+AssignOp = NULLISH_ASSIGN / LOGICAL_OR_ASSIGN / LOGICAL_AND_ASSIGN / PLUS_ASSIGN / MINUS_ASSIGN / STAR_ASSIGN / SLASH_ASSIGN / MOD_ASSIGN / ASSIGN
+PLUS_ASSIGN = "+="
+MINUS_ASSIGN = "-="
+STAR_ASSIGN = "*="
+SLASH_ASSIGN = "/="
+MOD_ASSIGN = "%="
+TernaryExpr = head:OrExpr _ QUESTION _ thenBranch:Expression _ COLON _ elseBranch:Expression -> Ternary / OrExpr
+OrExpr = head:NullishExpr tail:OrTail+ -> Or / NullishExpr
+OrTail = _ LOGICAL_OR _ right:NullishExpr -> OrTail
+NullishExpr = head:AndExpr tail:NullishTail+ -> Nullish / AndExpr
+NullishTail = _ NULLISH _ right:AndExpr -> NullishTail
+AndExpr = head:EqExpr tail:AndTail+ -> And / EqExpr
+AndTail = _ LOGICAL_AND _ right:EqExpr -> AndTail
+EqExpr = head:RelExpr tail:EqTail+ -> Eq / RelExpr
+EqTail = _ op:(STRICT_EQ / STRICT_NEQ / EQ / NEQ) _ right:RelExpr -> EqTail
+YieldStmt = YIELD __ value:Expression? -> YieldStmt
+
+RelExpr = head:AddExpr tail:RelTail+ -> Rel / AddExpr
+RelTail = _ op:(INSTANCEOF / IN / LTE / GTE / LT / GT) _ right:AddExpr -> RelTail
+AddExpr = head:MulExpr tail:AddTail+ -> Add / MulExpr
+AddTail = _ op:(PLUS / MINUS) _ right:MulExpr -> AddTail
+MulExpr = head:UnaryExpr tail:MulTail+ -> Mul / UnaryExpr
+MulTail = _ op:(STAR / SLASH / MOD) _ right:UnaryExpr -> MulTail
+UnaryExpr = op:UnaryOp _ expression:UnaryExpr -> Unary / TypeofExpr / AwaitExpr / YieldExpr / VoidExpr / AsExpr
+UnaryOp = INC / DEC / BANG / MINUS / PLUS
+TypeofExpr = TYPEOF __ value:Expression -> TypeofExpr
+AwaitExpr = AWAIT __ value:Expression -> AwaitExpr
+YieldExpr = YIELD __ value:Expression -> YieldExpr
+VoidExpr = VOID __ value:Expression -> VoidExpr
+
+AsExpr = expression:PostfixExpr tail:AsTail* -> AsChain / PostfixExpr
+AsTail = _ AS __ type:TypeExpression -> AsTail
+PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
+PostfixTail = _ LBRACKET _ index:Expression _ RBRACKET -> Index / _ DOT _ name:Id -> Member / _ QUESTION DOT _ name:Id -> OptionalMember / _ QUESTION LBRACKET _ index:Expression _ RBRACKET -> OptionalIndex / _ QUESTION LPAREN _ args:ArgList? _ RPAREN -> OptionalCall / _ op:PostfixOp -> Postfix / _ BANG -> NonNull / _ LPAREN _ args:ArgList? _ RPAREN -> Call
+PostfixOp = INC / DEC
+
+Primary = TemplateString / String / ArrowFunc / ObjectLit / ArrayLit / Regex / Group / Float / Int / Null / Bool / Undefined / SuperExpr / NewExpr / CallExpr / TaggedTemplate / Ident
+Regex = "/" body:$( ( "\\" . / ~[/] )* ) "/" flags:$( [a-z]* ) -> RegexLiteral
+SuperExpr = SUPER _ LPAREN _ args:ArgList? _ RPAREN -> SuperExpr
+Undefined = UNDEFINED -> Undefined
+Ident = name:Id -> Ident
+NewExpr = NEW __ name:Id typeArgs:TypeArgs? _ LPAREN _ args:ArgList? _ RPAREN -> New
+CallExpr = callee:$( Id DOT Id ) _ LPAREN _ args:ArgList? _ RPAREN -> CallExpr / name:Id _ LPAREN _ args:ArgList? _ RPAREN -> CallExpr
+TaggedTemplate = name:Id _ template:TemplateString -> TaggedTemplate
+ArgList = args:Expression { 1 ; _ COMMA _ } _ COMMA? -> ArgList
+
+Bool = value:(TRUE / FALSE) -> Bool
+Null = NULL -> Null
+
+TypeExpression = UnionType
+UnionType = head:IntersectionType tail:UnionTail+ -> UnionType / IntersectionType
+UnionTail = _ PIPE _ right:IntersectionType -> UnionTail
+IntersectionType = head:PrimaryType tail:IntersectionTail+ -> IntersectionType / PrimaryType
+IntersectionTail = _ AMP _ right:PrimaryType -> IntersectionTail
+PrimaryType = ArrayType / LPAREN _ type:TypeExpression _ RPAREN / FunctionType / ObjectType / TupleType / TypeofType / TypeRef
+ArrayType = elementType:NonGroupType _ LBRACKET _ RBRACKET -> ArrayType / NonGroupType
+NonGroupType = KeyofType / TypeofType / FunctionType / ObjectType / TupleType / LiteralType / VoidType / TypeRef
+LiteralType = value:String -> StringLiteralType / value:("-"? Int) -> NumberLiteralType
+VoidType = VOID -> VoidType
+KeyofType = KEYOF __ type:TypeExpression -> KeyofType
+TypeRef = name:Uid typeArgs:TypeArgs? -> TypeRef
+FunctionType = LPAREN _ params:FuncTypeParams? _ RPAREN _ ARROW _ returnType:TypeExpression -> FunctionType
+FuncTypeParams = params:FuncTypeParam { 1 ; _ COMMA _ } _ COMMA? -> FuncTypeParams
+FuncTypeParam = SPREAD name:Id _ COLON _ type:TypeExpression -> FuncRestParam / name:Id optional:QUESTION? _ COLON _ type:TypeExpression -> FuncTypeParam
+ObjectType = LBRACE _ members:TypeMember? _ RBRACE -> ObjectType
+TupleType = LBRACKET _ types:TypeExpression { 1 ; _ COMMA _ } _ COMMA? _ RBRACKET -> TupleType
+TypeofType = TYPEOF __ name:Id -> TypeofType
+
+ArrowFunc = async:AsyncModifier? LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? _ ARROW _ body:ArrowBody -> ArrowFunc / async:AsyncModifier? name:Id _ ARROW _ body:ArrowBody -> ArrowFunc
+ArrowBody = expression:Expression -> ArrowExpr / body:Block -> ArrowBlock
+
+ObjectLit = LBRACE _ properties:ObjectProperty? _ RBRACE -> ObjectLit
+ObjectProperty = properties:ObjectPropertyItem { 1 ; _ COMMA _ } _ COMMA? -> ObjectProperty
+ObjectPropertyItem = SPREAD _ value:Expression -> SpreadProperty / GET __ name:Uid _ LPAREN _ RPAREN returnType:ReturnType? _ body:Block -> Getter / SET __ name:Uid _ LPAREN _ name:Uid typeAnnotation:TypeAnnotation? _ RPAREN _ body:Block -> Setter / name:Uid _ LPAREN _ params:ParamList? _ RPAREN returnType:ReturnType? _ body:Block -> Method / name:Uid _ COLON _ value:Expression -> Property / name:Uid -> Shorthand
+
+Group = LPAREN _ ^Expression _ RPAREN
+
+String = value:DoubleString -> String / value:SingleString -> String
+DoubleString = DQUOTE_ESC ^DChar* DQUOTE_ESC
+DChar = BACKSLASH DOT / ~DQUOTE_ESC
+SingleString = SQUOTE ^SChar* SQUOTE
+SChar = BACKSLASH DOT / ~SQUOTE
+
+TemplateString = BACKTICK parts:TemplatePart* BACKTICK -> TemplateString
+TemplatePart = Interpolation / TextPart
+Interpolation = INTERP_START _ expression:Expression _ RBRACE -> Interpolation
+TextPart = value:$( ( BACKSLASH . / ~(BACKTICK / INTERP_START) )+ ) -> TextPart
+
+Float = value:$( Number DOT Number ) -> Float
+Int = value:$( MINUS? Number ) -> Int
+Number = ZERO / $( [1-9] [0-9]* )
+
+Id = !(Keyword !IdChar) $( [a-z_]i [a-z0-9_]i* )
+
+Uid = $( [a-z_]i [a-z0-9_]i* )
+
+IdChar = [a-z0-9_]i
+
+Keyword = ASYNC / AWAIT / BREAK / CASE / CATCH / CLASS / CONST / CONTINUE / DEFAULT / ELSE / ENUM / EXPORT / EXTENDS / FALSE / FINALLY / FOR / FUNCTION / IF / IMPLEMENTS / IN / INSTANCEOF / INTERFACE / KEYOF / LET / NEW / NULL / PRIVATE / PROTECTED / PUBLIC / READONLY / RETURN / SUPER / SWITCH / THROW / TRUE / TRY / TYPEOF / UNDEFINED / VAR / VOID / WHILE / YIELD / AS
+
+ArrayLit = LBRACKET _ elements:ArrayItem { 0 ; _ COMMA _ } _ COMMA? _ RBRACKET -> ArrayLit
+ArrayItem = SPREAD _ value:Expression -> SpreadElement / value:Expression -> ArrayElement
+_ = Space*
+__ = Space+
+Space = WhiteSpace / SingleLineComment / MultiLineComment
+WhiteSpace = [ \t\r\n]+
+SingleLineComment = LINE_COMMENT_START ~[\r\n]*
+MultiLineComment = BLOCK_COMMENT_START ~BLOCK_COMMENT_END* BLOCK_COMMENT_END
+// === Tokens ===
+AMP = "&"
+ARROW = "=>"
+AS = "as"
+ASSIGN = "="
+AT = "@"
+BACKSLASH = "\\"
+BACKTICK = "`"
+BANG = "!"
+BLOCK_COMMENT_END = "*/"
+BLOCK_COMMENT_START = "/*"
+CLASS = "class"
+COLON = ":"
+COMMA = ","
+CONST = "const"
+DEC = "--"
+DEFAULT = "default"
+DOT = "."
+DQUOTE_ESC = "\""
+SQUOTE = "'"
+ELSE = "else"
+ENUM = "enum"
+EQ = "=="
+EXPORT = "export"
+EXTENDS = "extends"
+FALSE = "false"
+FOR = "for"
+FROM = "from"
+FUNCTION = "function"
+GT = ">"
+GTE = ">="
+GET = "get"
+IF = "if"
+IMPLEMENTS = "implements"
+IN = "in"
+IS = "is"
+IMPORT = "import"
+INC = "++"
+INSTANCEOF = "instanceof"
+INTERFACE = "interface"
+INTERP_START = "${"
+KEYOF = "keyof"
+LBRACE = "{"
+LBRACKET = "["
+LET = "let"
+LINE_COMMENT_START = "//"
+LOGICAL_AND = "&&"
+LOGICAL_OR = "||"
+NULLISH = "??"
+NULLISH_ASSIGN = "??="
+LOGICAL_AND_ASSIGN = "&&="
+LOGICAL_OR_ASSIGN = "||="
+LPAREN = "("
+LT = "<"
+LTE = "<="
+MINUS = "-"
+MOD = "%"
+NEQ = "!="
+NEW = "new"
+NULL = "null"
+OF = "of"
+PIPE = "|"
+PLUS = "+"
+PRIVATE = "private"
+PROTECTED = "protected"
+PUBLIC = "public"
+QUESTION = "?"
+RBRACE = "}"
+RBRACKET = "]"
+READONLY = "readonly"
+RETURN = "return"
+RPAREN = ")"
+SEMI = ";"
+SET = "set"
+SLASH = "/"
+SPREAD = "..."
+STAR = "*"
+STRICT_EQ = "==="
+STRICT_NEQ = "!=="
+TRUE = "true"
+TYPE = "type"
+TYPEOF = "typeof"
+UNDEFINED = "undefined"
+VAR = "var"
+WHILE = "while"
+YIELD = "yield"
+ASYNC = "async"
+AWAIT = "await"
+BREAK = "break"
+CONTINUE = "continue"
+SWITCH = "switch"
+CASE = "case"
+THROW = "throw"
+TRY = "try"
+CATCH = "catch"
+FINALLY = "finally"
+VOID = "void"
+ZERO = "0"
+SUPER = "super"

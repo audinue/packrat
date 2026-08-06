@@ -14,18 +14,24 @@ ExprStmt = expression:Expression _ ";"? -> ExprStmt
 ParamList = params:Param { 1 ; _ "," _ } -> ParamList
 Param = "..." name:Id -> RestParam / name:Id -> Param
 Expression = OrExpr
-OrExpr = left:OrExpr _ "||" _ right:AndExpr -> Or / AndExpr
-AndExpr = left:AndExpr _ "&&" _ right:EqExpr -> And / EqExpr
-EqExpr = left:EqExpr _ "===" _ right:RelExpr -> StrictEq / left:EqExpr _ "!==" _ right:RelExpr -> StrictNeq / left:EqExpr _ "==" _ right:RelExpr -> Eq / left:EqExpr _ "!=" _ right:RelExpr -> Neq / RelExpr
-RelExpr = left:RelExpr _ "<" _ right:AddExpr -> Lt / left:RelExpr _ ">" _ right:AddExpr -> Gt / left:RelExpr _ "<=" _ right:AddExpr -> Lte / left:RelExpr _ ">=" _ right:AddExpr -> Gte / AddExpr
-AddExpr = left:AddExpr _ "+" _ right:MulExpr -> Add / left:AddExpr _ "-" _ right:MulExpr -> Sub / MulExpr
-MulExpr = left:MulExpr _ "*" _ right:UnaryExpr -> Mul / left:MulExpr _ "/" _ right:UnaryExpr -> Div / left:MulExpr _ "%" _ right:UnaryExpr -> Mod / UnaryExpr
+OrExpr = head:AndExpr tail:OrTail+ -> Or / AndExpr
+OrTail = _ "||" _ right:AndExpr -> OrTail
+AndExpr = head:EqExpr tail:AndTail+ -> And / EqExpr
+AndTail = _ "&&" _ right:EqExpr -> AndTail
+EqExpr = head:RelExpr tail:EqTail+ -> Eq / RelExpr
+EqTail = _ op:("===" / "!==" / "==" / "!=") _ right:RelExpr -> EqTail
+RelExpr = head:AddExpr tail:RelTail+ -> Rel / AddExpr
+RelTail = _ op:("<=" / ">=" / "<" / ">") _ right:AddExpr -> RelTail
+AddExpr = head:MulExpr tail:AddTail+ -> Add / MulExpr
+AddTail = _ op:("+" / "-") _ right:MulExpr -> AddTail
+MulExpr = head:UnaryExpr tail:MulTail+ -> Mul / UnaryExpr
+MulTail = _ op:("*" / "/" / "%") _ right:UnaryExpr -> MulTail
 UnaryExpr = op:UnaryOp _ expression:UnaryExpr -> Unary / PostfixExpr
 UnaryOp = "++" / "--" / "!" / "-"
 PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
 PostfixTail = "[" _ index:Expression _ "]" -> Index / "." _ name:Id -> Member / op:PostfixOp -> Postfix
 PostfixOp = "++" / "--"
-Primary = TaggedTemplate / CallExpr / TemplateString / Bool / Null / ArrayLit / Group / Float / Int / String / Ident
+Primary = TemplateString / String / ArrayLit / Group / Float / Int / Null / Bool / CallExpr / TaggedTemplate / Ident
 TaggedTemplate = name:Id _ template:TemplateString -> TaggedTemplate
 CallExpr = callee:$( Id "." Id ) _ "(" _ args:ArgList? _ ")" -> CallExpr / name:Id _ "(" _ args:ArgList? _ ")" -> CallExpr
 TemplateString = "`" parts:TemplatePart* "`" -> TemplateString
