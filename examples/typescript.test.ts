@@ -388,6 +388,52 @@ describe('typescript parser', () => {
       tag: 'Decorator', name: 'Injectable', args: { tag: 'DecoratorArgs' }
     })
   })
+
+  test('grouped member access index assign', async () => {
+    const r = await ast('(a.b)[0] = 42;')
+    expect(r.statements[0].expression).toMatchObject({ tag: 'Assign' })
+  })
+
+  test('grouped call result index assign', async () => {
+    const r = await ast('(obj.method())[0] = 42;')
+    expect(r.statements[0].expression).toMatchObject({ tag: 'Assign' })
+  })
+
+  test('grouped access with computed index assign', async () => {
+    const r = await ast('(a.b)[c] = d;')
+    expect(r.statements[0].expression).toMatchObject({ tag: 'Assign' })
+  })
+
+  test('double grouped index assign', async () => {
+    const r = await ast('(a.b)[0][1] = 42;')
+    expect(r.statements[0].expression).toMatchObject({ tag: 'Assign' })
+  })
+
+  test('optional member chain', async () => {
+    const r = await ast('a?.b?.c;')
+    const ex = r.statements[0].expression
+    expect(ex.tail).toEqual([
+      { tag: 'OptionalMember', name: 'b' },
+      { tag: 'OptionalMember', name: 'c' },
+    ])
+  })
+
+  test('optional index chain', async () => {
+    const r = await ast('a?.[0]?.[1];')
+    const ex = r.statements[0].expression
+    expect(ex.tail).toMatchObject([
+      { tag: 'OptionalIndex' },
+      { tag: 'OptionalIndex' },
+    ])
+  })
+
+  test('mixed optional chain', async () => {
+    const r = await ast('obj?.items?.[0]?.name;')
+    const ex = r.statements[0].expression
+    expect(ex.tail.map((t: any) => t.tag)).toEqual([
+      'OptionalMember', 'OptionalIndex', 'OptionalMember',
+    ])
+  })
 })
 
 describe('typescript stress test', () => {

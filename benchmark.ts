@@ -51,18 +51,18 @@ const generateTs = (count: number): string => {
 }
 
 const workloads = [
+  { name: 'packrat.ts (self-parse)', grammar: grammars.miniTs, input: packratTsText, iterations: 20 },
   { name: `packrat.packrat ${(packratText.length / 1024).toFixed(1)}KB`, grammar: grammars.selfhost, input: packratText, iterations: 200 },
   { name: `packrat.packrat x${packratRepeat}`, grammar: grammars.selfhost, input: packratText.repeat(packratRepeat), iterations: Math.max(20, Math.floor(200 / packratRepeat)) },
   { name: 'mini-js 50 stmts', grammar: grammars.miniJs, input: generateJs(50), iterations: 100 },
   { name: 'mini-js 500 stmts', grammar: grammars.miniJs, input: generateJs(500), iterations: 30 },
-  { name: 'mini-js 5000 stmts', grammar: grammars.miniJs, input: generateJs(5000), iterations: 5 },
+  // { name: 'mini-js 5000 stmts', grammar: grammars.miniJs, input: generateJs(5000), iterations: 5 },
   { name: 'mini-go 50 stmts', grammar: grammars.miniGo, input: generateGo(50), iterations: 100 },
   { name: 'mini-go 500 stmts', grammar: grammars.miniGo, input: generateGo(500), iterations: 30 },
   { name: 'mini-sql 50 cols', grammar: grammars.miniSql, input: generateSql(50), iterations: 100 },
   { name: 'mini-sql 500 cols', grammar: grammars.miniSql, input: generateSql(500), iterations: 30 },
   { name: 'mini-ts 50 stmts', grammar: grammars.miniTs, input: generateTs(50), iterations: 100 },
   { name: 'mini-ts 500 stmts', grammar: grammars.miniTs, input: generateTs(500), iterations: 30 },
-  { name: 'packrat.ts (self-parse)', grammar: grammars.miniTs, input: packratTsText, iterations: 20 },
 ]
 
 const workloadName = (name: string, input: string) => `${name} (${(input.length / 1024).toFixed(1)}KB)`

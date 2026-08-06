@@ -115,7 +115,7 @@ VoidExpr = VOID __ value:Expression -> VoidExpr
 AsExpr = expression:PostfixExpr tail:AsTail+ -> AsChain / PostfixExpr
 AsTail = _ AS __ type:TypeExpression -> AsTail
 PostfixExpr = expression:Primary tail:PostfixTail* -> Chained
-PostfixTail = _ LBRACKET _ index:Expression _ RBRACKET -> Index / _ DOT _ name:Id -> Member / _ QUESTION DOT _ name:Id -> OptionalMember / _ QUESTION LBRACKET _ index:Expression _ RBRACKET -> OptionalIndex / _ QUESTION LPAREN _ args:ArgList? _ RPAREN -> OptionalCall / _ op:PostfixOp -> Postfix / _ BANG -> NonNull / _ LPAREN _ args:ArgList? _ RPAREN -> Call
+PostfixTail = _ LBRACKET _ index:Expression _ RBRACKET -> Index / _ DOT _ name:Id -> Member / _ QUESTION DOT _ ^( name:Id -> OptionalMember / LBRACKET _ index:Expression _ RBRACKET -> OptionalIndex / LPAREN _ args:ArgList? _ RPAREN -> OptionalCall ) / _ op:PostfixOp -> Postfix / _ BANG -> NonNull / _ LPAREN _ args:ArgList? _ RPAREN -> Call
 PostfixOp = INC / DEC
 
 Primary = TemplateString / String / ArrowFunc / ObjectLit / ArrayLit / Regex / Group / Float / Int / Null / Bool / Undefined / SuperExpr / NewExpr / CallExpr / TaggedTemplate / Ident

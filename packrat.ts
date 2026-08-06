@@ -833,14 +833,14 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     }
     if (!rule.isLeftRecursive) {
       const result = evaluateExpression(rule.expression);
-      ;(memo[start] ??= {})[startIndentKey] = {
+      (memo[start] ??= {})[startIndentKey] = {
         offset,
         indent: indent.slice(),
         indentKey,
         indentSize,
         result,
         growing: false,
-      }
+      };
       if (options.trace) {
         const tag = result === err ? "ERR" : "OK";
         console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
@@ -852,7 +852,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     stack.push(frame);
     let result: Value | Err = err;
     let endPos = start;
-    ;(memo[start] ??= {})[startIndentKey] = {
+    (memo[start] ??= {})[startIndentKey] = {
       offset: start,
       indent: indent.slice(),
       indentKey,
@@ -872,7 +872,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       }
       result = attempt;
       endPos = attemptEnd;
-      ;(memo[start] ??= {})[startIndentKey] = {
+      (memo[start] ??= {})[startIndentKey] = {
         offset: endPos,
         indent: indent.slice(),
         indentKey,
@@ -885,7 +885,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     if (stack.some((e) => e.involved?.has(name))) {
       delete memo[start][startIndentKey];
     } else {
-      ;(memo[start] ??= {})[startIndentKey] = {
+      (memo[start] ??= {})[startIndentKey] = {
         offset: endPos,
         indent: indent.slice(),
         indentKey,
@@ -2116,11 +2116,11 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             context.indentSize = entry.indentSize;
             return entry.result;
           }
-    const frame = { name, involved: null, start, indentKey: startIndentKey };
+          const frame = { name, involved: null, start, indentKey: startIndentKey };
           stack.push(frame);
           let result: Value | _Err = _err;
           let endPos = start;
-          ;(ruleMemo[start] ??= {})[startIndentKey] = {
+          (ruleMemo[start] ??= {})[startIndentKey] = {
             offset: start,
             indent: context.indent.slice(),
             indentKey: context.indentKey,
@@ -2136,7 +2136,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             if (result !== _err && attemptEnd <= endPos) break;
             result = attempt;
             endPos = attemptEnd;
-            ;(ruleMemo[start] ??= {})[startIndentKey] = {
+            (ruleMemo[start] ??= {})[startIndentKey] = {
               offset: endPos,
               indent: context.indent.slice(),
               indentKey: context.indentKey,
@@ -2149,7 +2149,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
           if (stack.some((e) => e.involved?.has(name))) {
             delete ruleMemo[start][startIndentKey];
           } else {
-            ;(ruleMemo[start] ??= {})[startIndentKey] = {
+            (ruleMemo[start] ??= {})[startIndentKey] = {
               offset: endPos,
               indent: context.indent.slice(),
               indentKey: context.indentKey,
@@ -2180,7 +2180,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             return entry.result;
           }
           const result = expression.parse(context);
-          ;(ruleMemo[start] ??= {})[startIndentKey] = {
+          (ruleMemo[start] ??= {})[startIndentKey] = {
             offset: context.offset,
             indent: context.indent.slice(),
             indentKey: context.indentKey,
