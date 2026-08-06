@@ -34,9 +34,7 @@ type Expression =
   | { tag: "Literal"; value: string; insensitive?: boolean }
   | { tag: "Any" };
 
-type Predicate =
-  | { tag: "Equal"; value: string }
-  | { tag: "Between"; min: string; max: string };
+type Predicate = { tag: "Equal"; value: string } | { tag: "Between"; min: string; max: string };
 
 type Location = {
   file: string;
@@ -56,13 +54,7 @@ type Value =
       [field: string]: Value | Location;
     };
 
-type Type =
-  | { tag: "Recursion" }
-  | { tag: "Null" }
-  | { tag: "String" }
-  | { tag: "Array"; element: Type }
-  | { tag: "Node"; name: string; fields: { name: string; type: Type }[] }
-  | { tag: "Union"; types: Type[] };
+type Type = { tag: "Recursion" } | { tag: "Null" } | { tag: "String" } | { tag: "Array"; element: Type } | { tag: "Node"; name: string; fields: { name: string; type: Type }[] } | { tag: "Union"; types: Type[] };
 
 type Node = Exclude<Value, null | string | Value[]>;
 
@@ -218,9 +210,7 @@ class ParseError extends Error {
 
 // SECTION: resolveGrammar
 const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
-  const rules = Object.fromEntries(
-    grammar.rules.map((rule) => [rule.name, rule.expression]),
-  );
+  const rules = Object.fromEntries(grammar.rules.map((rule) => [rule.name, rule.expression]));
   const rootName = grammar.rules[0]!.name;
   const referencesOf = new Map(
     grammar.rules.map((rule) => {
@@ -236,16 +226,10 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
       referenceCounts.set(name, (referenceCounts.get(name) ?? 0) + 1);
     }
   }
-  const isLeftRecursive = (
-    name: string,
-    expression: Expression,
-    visiting: Set<string> = new Set(),
-  ): boolean => {
+  const isLeftRecursive = (name: string, expression: Expression, visiting: Set<string> = new Set()): boolean => {
     switch (expression.tag) {
       case "Choice":
-        return expression.expressions.some((e) =>
-          isLeftRecursive(name, e, visiting),
-        );
+        return expression.expressions.some((e) => isLeftRecursive(name, e, visiting));
       case "Node":
         return isLeftRecursive(name, expression.expression, visiting);
       case "Sequence":
@@ -298,11 +282,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
   for (const name of bfs) {
     memoizeRequired.add(name);
   }
-  const reaches = (
-    from: string,
-    target: string,
-    visiting: Set<string> = new Set(),
-  ): boolean => {
+  const reaches = (from: string, target: string, visiting: Set<string> = new Set()): boolean => {
     if (from === target) return true;
     if (visiting.has(from)) return false;
     visiting.add(from);
@@ -353,18 +333,10 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             );
           });
       };
-      const getExpressionType = (
-        expression: Expression,
-        cache: Map<string, Type> = new Map(),
-        visiting: Set<string> = new Set(),
-      ): Type => {
+      const getExpressionType = (expression: Expression, cache: Map<string, Type> = new Map(), visiting: Set<string> = new Set()): Type => {
         switch (expression.tag) {
           case "Choice": {
-            const types = uniqueTypes(
-              expression.expressions.map((e) =>
-                getExpressionType(e, cache, visiting),
-              ),
-            );
+            const types = uniqueTypes(expression.expressions.map((e) => getExpressionType(e, cache, visiting)));
             if (types.length === 1) {
               return types[0]!;
             }
@@ -390,26 +362,18 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
             return { tag: "Node", name: expression.name, fields };
           }
           case "Sequence": {
-            const extracts = expression.expressions.filter(
-              (e) => e.tag === "Extract",
-            );
+            const extracts = expression.expressions.filter((e) => e.tag === "Extract");
             if (extracts.length === 1) {
               return getExpressionType(extracts[0]!, cache, visiting);
             }
             if (extracts.length > 1) {
-              const types = uniqueTypes(
-                extracts.map((e) => getExpressionType(e, cache, visiting)),
-              );
+              const types = uniqueTypes(extracts.map((e) => getExpressionType(e, cache, visiting)));
               if (types.length === 1) {
                 return { tag: "Array", element: types[0]! };
               }
               return { tag: "Array", element: { tag: "Union", types } };
             }
-            const types = uniqueTypes(
-              expression.expressions.map((e) =>
-                getExpressionType(e, cache, visiting),
-              ),
-            );
+            const types = uniqueTypes(expression.expressions.map((e) => getExpressionType(e, cache, visiting)));
             if (types.length === 1) {
               return { tag: "Array", element: types[0]! };
             }
@@ -426,21 +390,14 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
           case "Optional":
             return {
               tag: "Union",
-              types: [
-                { tag: "Null" },
-                getExpressionType(expression.expression, cache, visiting),
-              ],
+              types: [{ tag: "Null" }, getExpressionType(expression.expression, cache, visiting)],
             };
           case "Zero":
           case "One":
           case "Repeat":
             return {
               tag: "Array",
-              element: getExpressionType(
-                expression.expression,
-                cache,
-                visiting,
-              ),
+              element: getExpressionType(expression.expression, cache, visiting),
             };
           case "Reference":
             if (cache.has(expression.name)) {
@@ -450,11 +407,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
               return { tag: "Recursion" };
             }
             visiting.add(expression.name);
-            const type = getExpressionType(
-              rules[expression.name]!,
-              cache,
-              visiting,
-            );
+            const type = getExpressionType(rules[expression.name]!, cache, visiting);
             visiting.delete(expression.name);
             if (type.tag !== "Recursion") {
               cache.set(expression.name, type);
@@ -471,9 +424,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
         }
       };
       const typeCache = new Map<string, Type>();
-      const resolveExpression = (
-        expression: Expression,
-      ): ResolvedExpression => {
+      const resolveExpression = (expression: Expression): ResolvedExpression => {
         const type = getExpressionType(expression, typeCache);
         switch (expression.tag) {
           case "Choice":
@@ -529,10 +480,7 @@ const resolveGrammar = (grammar: Grammar): ResolvedGrammar => {
               ...expression,
               type,
               expression: resolveExpression(expression.expression),
-              separator:
-                expression.separator === undefined
-                  ? undefined
-                  : resolveExpression(expression.separator),
+              separator: expression.separator === undefined ? undefined : resolveExpression(expression.separator),
               result: nextResult(),
               saved1: nextSaved(),
               saved2: nextSaved(),
@@ -583,10 +531,7 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
   switch (expression.tag) {
     case "Choice":
     case "Sequence":
-      return [
-        expression,
-        ...expression.expressions.flatMap(getExpressionExpressions),
-      ];
+      return [expression, ...expression.expressions.flatMap(getExpressionExpressions)];
     case "Node":
     case "Field":
     case "Extract":
@@ -600,13 +545,7 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
     case "Indent":
       return [expression, ...getExpressionExpressions(expression.expression)];
     case "Repeat":
-      return [
-        expression,
-        ...getExpressionExpressions(expression.expression),
-        ...(expression.separator
-          ? getExpressionExpressions(expression.separator)
-          : []),
-      ];
+      return [expression, ...getExpressionExpressions(expression.expression), ...(expression.separator ? getExpressionExpressions(expression.separator) : [])];
     case "Reference":
     case "Class":
     case "Literal":
@@ -615,16 +554,10 @@ const getExpressionExpressions = (expression: Expression): Expression[] => {
   }
 };
 
-const getRuleExpressions = (rule: Rule) =>
-  getExpressionExpressions(rule.expression);
+const getRuleExpressions = (rule: Rule) => getExpressionExpressions(rule.expression);
 
 const isNode = (value: unknown): value is Node => {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "tag" in value &&
-    typeof value.tag === "string"
-  );
+  return value !== null && typeof value === "object" && "tag" in value && typeof value.tag === "string";
 };
 
 // SECTION: parseGrammar
@@ -682,12 +615,7 @@ const parseGrammar = (value: Value): Grammar => {
         };
       }
       case "Repeat": {
-        if (
-          !isNode(value.expression) ||
-          typeof value.min !== "string" ||
-          (typeof value.max !== "string" && value.max !== null) ||
-          (!isNode(value.separator) && value.separator !== null)
-        ) {
+        if (!isNode(value.expression) || typeof value.min !== "string" || (typeof value.max !== "string" && value.max !== null) || (!isNode(value.separator) && value.separator !== null)) {
           throw new Error("Invalid value");
         }
         return {
@@ -695,10 +623,7 @@ const parseGrammar = (value: Value): Grammar => {
           expression: parseExpression(value.expression),
           min: parseInt(value.min),
           max: value.max === null ? undefined : parseInt(value.max),
-          separator:
-            value.separator === null
-              ? undefined
-              : parseExpression(value.separator),
+          separator: value.separator === null ? undefined : parseExpression(value.separator),
         };
       }
       case "Reference": {
@@ -725,10 +650,7 @@ const parseGrammar = (value: Value): Grammar => {
                 value: JSON.parse(`"${value.value}"`),
               };
             case "Between":
-              if (
-                typeof value.min !== "string" ||
-                typeof value.max !== "string"
-              ) {
+              if (typeof value.min !== "string" || typeof value.max !== "string") {
                 throw new Error("Invalid value");
               }
               return {
@@ -784,9 +706,7 @@ const parseGrammar = (value: Value): Grammar => {
     }
   }
   const ruleNames = new Set(rules.map((rule) => rule.name));
-  const references = rules
-    .flatMap(getRuleExpressions)
-    .filter((expression) => expression.tag === "Reference");
+  const references = rules.flatMap(getRuleExpressions).filter((expression) => expression.tag === "Reference");
   for (const reference of references) {
     if (!ruleNames.has(reference.name)) {
       throw new Error("Unknown rule " + reference.name);
@@ -796,14 +716,8 @@ const parseGrammar = (value: Value): Grammar => {
 };
 
 // SECTION: evaluateGrammar
-const evaluateGrammar = (
-  grammar: ResolvedGrammar,
-  input: string,
-  options: ParseOptions = {},
-) => {
-  const rules = Object.fromEntries(
-    grammar.rules.map((rule) => [rule.name, rule]),
-  );
+const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: ParseOptions = {}) => {
+  const rules = Object.fromEntries(grammar.rules.map((rule) => [rule.name, rule]));
   const cache = Object.fromEntries(
     grammar.rules.map((rule) => [
       rule.name,
@@ -898,12 +812,7 @@ const evaluateGrammar = (
       return entry.result;
     }
     const rule = rules[name]!;
-    if (options.trace)
-      console.log(
-        "  ".repeat(stack.length) + `[${name}]`,
-        "ENTER",
-        `@${start}`,
-      );
+    if (options.trace) console.log("  ".repeat(stack.length) + `[${name}]`, "ENTER", `@${start}`);
     if (!rule.memoize) {
       const result = evaluateExpression(rule.expression);
       // if (options.trace) {
@@ -930,12 +839,7 @@ const evaluateGrammar = (
       };
       if (options.trace) {
         const tag = result === err ? "ERR" : "OK";
-        console.log(
-          "  ".repeat(stack.length) + `[${name}]`,
-          tag,
-          `@${start}→${offset}`,
-          result === err ? "" : JSON.stringify(result).slice(0, 60),
-        );
+        console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
       }
       if (offset > rightmostOffset) rightmostOffset = offset;
       return result;
@@ -989,12 +893,7 @@ const evaluateGrammar = (
     offset = endPos;
     if (options.trace) {
       const tag = result === err ? "ERR" : "OK";
-      console.log(
-        "  ".repeat(stack.length) + `[${name}]`,
-        tag,
-        `@${start}→${offset}`,
-        result === err ? "" : JSON.stringify(result).slice(0, 60),
-      );
+      console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
     }
     if (offset > rightmostOffset) rightmostOffset = offset;
     return result;
@@ -1181,31 +1080,17 @@ const evaluateGrammar = (
           return err;
         }
         offset++;
-        if (
-          char === "\r" &&
-          offset < input.length &&
-          input.charAt(offset) === "\n"
-        ) {
+        if (char === "\r" && offset < input.length && input.charAt(offset) === "\n") {
           offset++;
         }
         while (offset < input.length) {
           let scan = offset;
-          while (
-            scan < input.length &&
-            (input.charAt(scan) === " " || input.charAt(scan) === "\t")
-          ) {
+          while (scan < input.length && (input.charAt(scan) === " " || input.charAt(scan) === "\t")) {
             scan++;
           }
-          if (
-            scan < input.length &&
-            (input.charAt(scan) === "\n" || input.charAt(scan) === "\r")
-          ) {
+          if (scan < input.length && (input.charAt(scan) === "\n" || input.charAt(scan) === "\r")) {
             offset = scan + 1;
-            if (
-              input.charAt(scan) === "\r" &&
-              offset < input.length &&
-              input.charAt(offset) === "\n"
-            ) {
+            if (input.charAt(scan) === "\r" && offset < input.length && input.charAt(offset) === "\n") {
               offset++;
             }
             continue;
@@ -1213,10 +1098,7 @@ const evaluateGrammar = (
           break;
         }
         const saved = offset;
-        while (
-          offset < input.length &&
-          (input.charAt(offset) === " " || input.charAt(offset) === "\t")
-        ) {
+        while (offset < input.length && (input.charAt(offset) === " " || input.charAt(offset) === "\t")) {
           offset++;
         }
         const next = offset - saved;
@@ -1253,22 +1135,9 @@ const evaluateGrammar = (
           expression.predicates.some((predicate) => {
             switch (predicate.tag) {
               case "Equal":
-                return (
-                  (expression.insensitive
-                    ? predicate.value.toUpperCase()
-                    : predicate.value) === value
-                );
+                return (expression.insensitive ? predicate.value.toUpperCase() : predicate.value) === value;
               case "Between":
-                return (
-                  value >=
-                    (expression.insensitive
-                      ? predicate.min.toUpperCase()
-                      : predicate.min) &&
-                  value <=
-                    (expression.insensitive
-                      ? predicate.max.toUpperCase()
-                      : predicate.max)
-                );
+                return value >= (expression.insensitive ? predicate.min.toUpperCase() : predicate.min) && value <= (expression.insensitive ? predicate.max.toUpperCase() : predicate.max);
             }
           }) !== !!expression.negation
         ) {
@@ -1281,16 +1150,8 @@ const evaluateGrammar = (
         if (offset + expression.value.length > input.length) {
           return err;
         }
-        const substring = input.substring(
-          offset,
-          offset + expression.value.length,
-        );
-        if (
-          (expression.insensitive ? substring.toUpperCase() : substring) ===
-          (expression.insensitive
-            ? expression.value.toUpperCase()
-            : expression.value)
-        ) {
+        const substring = input.substring(offset, offset + expression.value.length);
+        if ((expression.insensitive ? substring.toUpperCase() : substring) === (expression.insensitive ? expression.value.toUpperCase() : expression.value)) {
           offset += substring.length;
           return substring;
         }
@@ -1307,11 +1168,7 @@ const evaluateGrammar = (
   const result = evaluateRule(options.startRule ?? grammar.rules[0]!.name);
   if (result === err || offset < input.length) {
     const location = getLocation(offset);
-    throw new ParseError(
-      `Unexpected ${offset < input.length ? JSON.stringify(input.charAt(offset)) : "end of file"} at ${location}\n\n${location.preview}`,
-      location,
-      rightmostOffset,
-    );
+    throw new ParseError(`Unexpected ${offset < input.length ? JSON.stringify(input.charAt(offset)) : "end of file"} at ${location}\n\n${location.preview}`, location, rightmostOffset);
   }
   return result;
 };
@@ -1499,11 +1356,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             },
           };
         } else if (innerExpr.tag === "Sequence") {
-          const fieldEntries = innerExpr.expressions
-            .map((e, i) =>
-              e.tag === "Field" ? { name: e.name, index: i } : null,
-            )
-            .filter((x) => x !== null);
+          const fieldEntries = innerExpr.expressions.map((e, i) => (e.tag === "Field" ? { name: e.name, index: i } : null)).filter((x) => x !== null);
           extractor = {
             assign(node, result) {
               for (const { name, index } of fieldEntries) {
@@ -1995,10 +1848,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
       }
       case "Repeat": {
         const inner = buildParser(expression.expression);
-        const sep =
-          expression.separator !== undefined
-            ? buildParser(expression.separator)
-            : undefined;
+        const sep = expression.separator !== undefined ? buildParser(expression.separator) : undefined;
         return {
           parse(context) {
             const results: Value[] = [];
@@ -2062,33 +1912,17 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
               return _err;
             }
             context.offset++;
-            if (
-              char === "\r" &&
-              context.offset < context.input.length &&
-              context.input.charAt(context.offset) === "\n"
-            ) {
+            if (char === "\r" && context.offset < context.input.length && context.input.charAt(context.offset) === "\n") {
               context.offset++;
             }
             while (context.offset < context.input.length) {
               let scan = context.offset;
-              while (
-                scan < context.input.length &&
-                (context.input.charAt(scan) === " " ||
-                  context.input.charAt(scan) === "\t")
-              ) {
+              while (scan < context.input.length && (context.input.charAt(scan) === " " || context.input.charAt(scan) === "\t")) {
                 scan++;
               }
-              if (
-                scan < context.input.length &&
-                (context.input.charAt(scan) === "\n" ||
-                  context.input.charAt(scan) === "\r")
-              ) {
+              if (scan < context.input.length && (context.input.charAt(scan) === "\n" || context.input.charAt(scan) === "\r")) {
                 context.offset = scan + 1;
-                if (
-                  context.input.charAt(scan) === "\r" &&
-                  context.offset < context.input.length &&
-                  context.input.charAt(context.offset) === "\n"
-                ) {
+                if (context.input.charAt(scan) === "\r" && context.offset < context.input.length && context.input.charAt(context.offset) === "\n") {
                   context.offset++;
                 }
                 continue;
@@ -2096,11 +1930,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
               break;
             }
             const saved = context.offset;
-            while (
-              context.offset < context.input.length &&
-              (context.input.charAt(context.offset) === " " ||
-                context.input.charAt(context.offset) === "\t")
-            ) {
+            while (context.offset < context.input.length && (context.input.charAt(context.offset) === " " || context.input.charAt(context.offset) === "\t")) {
               context.offset++;
             }
             const next = context.offset - saved;
@@ -2122,10 +1952,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             context.indentKey += "," + nextLevel;
             const result = inner.parse(context);
             context.indent.pop();
-            context.indentKey = context.indentKey.slice(
-              0,
-              context.indentKey.lastIndexOf(","),
-            );
+            context.indentKey = context.indentKey.slice(0, context.indentKey.lastIndexOf(","));
             if (context.indent.length === 1) {
               context.indentSize = undefined;
             }
@@ -2134,35 +1961,27 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
         };
       }
       case "Class": {
-        const predicates: _PredicateParser[] = expression.predicates.map(
-          (predicate) => {
-            switch (predicate.tag) {
-              case "Equal": {
-                const value = expression.insensitive
-                  ? predicate.value.toUpperCase()
-                  : predicate.value;
-                return {
-                  match(v) {
-                    return v === value;
-                  },
-                };
-              }
-              case "Between": {
-                const min = expression.insensitive
-                  ? predicate.min.toUpperCase()
-                  : predicate.min;
-                const max = expression.insensitive
-                  ? predicate.max.toUpperCase()
-                  : predicate.max;
-                return {
-                  match(v) {
-                    return v >= min && v <= max;
-                  },
-                };
-              }
+        const predicates: _PredicateParser[] = expression.predicates.map((predicate) => {
+          switch (predicate.tag) {
+            case "Equal": {
+              const value = expression.insensitive ? predicate.value.toUpperCase() : predicate.value;
+              return {
+                match(v) {
+                  return v === value;
+                },
+              };
             }
-          },
-        );
+            case "Between": {
+              const min = expression.insensitive ? predicate.min.toUpperCase() : predicate.min;
+              const max = expression.insensitive ? predicate.max.toUpperCase() : predicate.max;
+              return {
+                match(v) {
+                  return v >= min && v <= max;
+                },
+              };
+            }
+          }
+        });
         return {
           parse(context) {
             if (context.offset >= context.input.length) {
@@ -2170,9 +1989,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             }
             const char = context.input.charAt(context.offset);
             const value = expression.insensitive ? char.toUpperCase() : char;
-            if (
-              predicates.some((p) => p.match(value)) !== !!expression.negation
-            ) {
+            if (predicates.some((p) => p.match(value)) !== !!expression.negation) {
               context.offset++;
               return char;
             }
@@ -2189,14 +2006,8 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
             if (context.offset + length > context.input.length) {
               return _err;
             }
-            const substring = context.input.substring(
-              context.offset,
-              context.offset + length,
-            );
-            if (
-              (expression.insensitive ? substring.toUpperCase() : substring) ===
-              upperValue
-            ) {
+            const substring = context.input.substring(context.offset, context.offset + length);
+            if ((expression.insensitive ? substring.toUpperCase() : substring) === upperValue) {
               context.offset += length;
               return substring;
             }
@@ -2227,10 +2038,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
       memoize: rule.memoize,
     };
   }
-  const createContext = (
-    input: string,
-    options: ParseOptions,
-  ): _ParseContext => {
+  const createContext = (input: string, options: ParseOptions): _ParseContext => {
     const stack: _StackFrame[] = [];
     const getLocation = (offset: number): Location => {
       let line = 1;
@@ -2386,16 +2194,10 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
     rules,
     parse(input, options = {}) {
       const context = createContext(input, options);
-      const result = context.parseRule(
-        options.startRule ?? resolved.rules[0]!.name,
-      );
+      const result = context.parseRule(options.startRule ?? resolved.rules[0]!.name);
       if (result === _err || context.offset < input.length) {
         const location = context.getLocation(context.offset);
-        throw new ParseError(
-          `Unexpected ${context.offset < input.length ? JSON.stringify(input.charAt(context.offset)) : "end of file"} at ${location}\n\n${location.preview}`,
-          location,
-          0
-        );
+        throw new ParseError(`Unexpected ${context.offset < input.length ? JSON.stringify(input.charAt(context.offset)) : "end of file"} at ${location}\n\n${location.preview}`, location, 0);
       }
       return result;
     },
@@ -2461,9 +2263,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         `;
       }
       case "Sequence": {
-        const extracts = expression.expressions.filter(
-          (e) => e.tag === "Extract",
-        );
+        const extracts = expression.expressions.filter((e) => e.tag === "Extract");
         let buffer;
         if (extracts.length === 1) {
           buffer = `${expression.result} = ${extracts[0]!.result}`;
@@ -2611,9 +2411,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         if (!target.inlineable) {
           return `${expression.result} = parse${expression.name}()`;
         }
-        const results = [...Array(target.resultCount).keys()]
-          .map((key) => `result${target.resultStart + key}`)
-          .join(", ");
+        const results = [...Array(target.resultCount).keys()].map((key) => `result${target.resultStart + key}`).join(", ");
         return `
           {
             let ${results}
@@ -2763,9 +2561,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
     }
   };
   const emitJsRule = (rule: ResolvedRule) => {
-    const results = [...Array(rule.resultCount).keys()]
-      .map((key) => `result${rule.resultStart + key}`)
-      .join(", ");
+    const results = [...Array(rule.resultCount).keys()].map((key) => `result${rule.resultStart + key}`).join(", ");
     if (rule.inlineable) return "";
     if (!rule.memoize) {
       return `
@@ -2912,11 +2708,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
 };
 
 // SECTION: emitPhp
-const emitPhp = (
-  grammar: ResolvedGrammar,
-  parserClassName = "Parser",
-  errorClassName = "ParserError",
-) => {
+const emitPhp = (grammar: ResolvedGrammar, parserClassName = "Parser", errorClassName = "ParserError") => {
   const emitPhpExpression = (expression: ResolvedExpression): string => {
     switch (expression.tag) {
       case "Choice": {
@@ -2971,9 +2763,7 @@ const emitPhp = (
         `;
       }
       case "Sequence": {
-        const extracts = expression.expressions.filter(
-          (e) => e.tag === "Extract",
-        );
+        const extracts = expression.expressions.filter((e) => e.tag === "Extract");
         let buffer;
         if (extracts.length === 1) {
           buffer = `$${expression.result} = $${extracts[0]!.result};`;
@@ -4217,9 +4007,7 @@ const getResolvedGrammar = (grammarText: string): ResolvedGrammar => {
   if (grammarCache.has(grammarText)) {
     return grammarCache.get(grammarText)!;
   }
-  const grammar = resolveGrammar(
-    parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText)),
-  );
+  const grammar = resolveGrammar(parseGrammar(evaluateGrammar(resolvedPackratGrammar, grammarText)));
   grammarCache.set(grammarText, grammar);
   return grammar;
 };
@@ -4269,10 +4057,7 @@ const createPhpWorker = (phpBinary: string = "php"): PhpWorker => {
     stdout: "pipe",
   });
   let nextId = 0;
-  const pending = new Map<
-    number,
-    { resolve: (result: any) => void; reject: (error: Error) => void }
-  >();
+  const pending = new Map<number, { resolve: (result: any) => void; reject: (error: Error) => void }>();
   let buffer = "";
   const readStdout = async () => {
     for await (const chunk of proc.stdout) {
@@ -4331,17 +4116,11 @@ let phpWorker: PhpWorker | undefined = undefined;
 let classCounter = 0;
 
 // SECTION: packrat
-const packrat = async (
-  input: TemplateStringsArray | string,
-): Promise<(input: string, options?: ParseOptions) => Promise<Value>> => {
+const packrat = async (input: TemplateStringsArray | string): Promise<(input: string, options?: ParseOptions) => Promise<Value>> => {
   const grammarText = typeof input === "string" ? input : input.join("");
   if (import.meta.env.MODE === "php") {
     const id = ++classCounter;
-    const parser = emitPhp(
-      getResolvedGrammar(grammarText),
-      `Parser${id}`,
-      `ParserError${id}`,
-    );
+    const parser = emitPhp(getResolvedGrammar(grammarText), `Parser${id}`, `ParserError${id}`);
     if (!phpWorker) {
       phpWorker = createPhpWorker();
     }
@@ -4415,25 +4194,9 @@ const stringifyGrammarTypes = (grammar: ResolvedGrammar): string => {
           .join(" | ");
     }
   };
-  return grammar.rules
-    .map((rule) => `${rule.name}: ${stringifyType(rule.type)}`)
-    .join("\n");
+  return grammar.rules.map((rule) => `${rule.name}: ${stringifyType(rule.type)}`).join("\n");
 };
 
 // console.log(stringifyGrammarTypes(resolvedPackratGrammar))
 
-export {
-  buildGrammar,
-  createPhpWorker,
-  emitJs,
-  evaluateGrammar,
-  isNode,
-  packrat,
-  packratGrammar,
-  ParseError,
-  parseGrammar,
-  resolveGrammar,
-  type Location,
-  type Node,
-  type Value as Ok,
-};
+export { buildGrammar, createPhpWorker, emitJs, evaluateGrammar, isNode, packrat, packratGrammar, ParseError, parseGrammar, resolveGrammar, type Location, type Node, type Value as Ok };
