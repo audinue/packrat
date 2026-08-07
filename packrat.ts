@@ -2570,7 +2570,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
     return `
       const parse${rule.name} = rules[${JSON.stringify(rule.name)}] = () => {
         const start = offset
-    const key = start + '@' + indentKey
+        const key = start + '@' + indentKey
         const memo = cache.${rule.name}
         const entry = memo[key]
         if (entry) {
@@ -2595,7 +2595,7 @@ const emitJs = (grammar: ResolvedGrammar) => {
         stack.push(frame)
         let result = err
         let endPos = start
-    memo[key] = { offset: start, indent: indent.slice(), indentKey, indentSize, result, growing: true }
+        memo[key] = { offset: start, indent: indent.slice(), indentKey, indentSize, result, growing: true }
         while (true) {
           offset = start
           ${emitJsExpression(rule.expression)}
@@ -2608,13 +2608,13 @@ const emitJs = (grammar: ResolvedGrammar) => {
           }
           result = ${rule.expression.result}
           endPos = attemptEnd
-      memo[key] = { offset: endPos, indent: indent.slice(), indentKey, indentSize, result, growing: true }
+          memo[key] = { offset: endPos, indent: indent.slice(), indentKey, indentSize, result, growing: true }
         }
         stack.pop()
         if (stack.some(e => e.involved?.has('${rule.name}'))) {
           delete memo[key]
         } else {
-      memo[key] = { offset: endPos, indent: indent.slice(), indentKey, indentSize, result, growing: false }
+          memo[key] = { offset: endPos, indent: indent.slice(), indentKey, indentSize, result, growing: false }
         }
         offset = endPos
         return result
