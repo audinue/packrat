@@ -58,7 +58,7 @@ type Type = { tag: "Recursion" } | { tag: "Null" } | { tag: "String" } | { tag: 
 
 type Node = Exclude<Value, null | string | Value[]>;
 
-type ParseOptions = { file?: string; startRule?: string; trace?: boolean };
+type ParseOptions = { file?: string; startRule?: string };
 
 type ResolvedGrammar = { rules: ResolvedRule[] };
 
@@ -802,32 +802,12 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       indent = entry.indent.slice();
       indentKey = entry.indentKey;
       indentSize = entry.indentSize;
-      // if (options.trace) {
-      //   const tag = entry.result === err ? "ERR" : "OK";
-      //   console.log(
-      //     "  ".repeat(stack.length) + `[${name}]`,
-      //     "CACHE",
-      //     tag,
-      //     `@${start}→${offset}`,
-      //     entry.result === err ? "" : JSON.stringify(entry.result).slice(0, 60),
-      //   );
-      // }
       if (offset > rightmostOffset) rightmostOffset = offset;
       return entry.result;
     }
     const rule = rules[name]!;
-    if (options.trace) console.log("  ".repeat(stack.length) + `[${name}]`, "ENTER", `@${start}`);
     if (!rule.memoize) {
       const result = evaluateExpression(rule.expression);
-      // if (options.trace) {
-      //   const tag = result === err ? "ERR" : "OK";
-      //   console.log(
-      //     "  ".repeat(stack.length) + `[${name}]`,
-      //     tag,
-      //     `@${start}→${offset}`,
-      //     result === err ? "" : JSON.stringify(result).slice(0, 60),
-      //   );
-      // }
       if (offset > rightmostOffset) rightmostOffset = offset;
       return result;
     }
@@ -841,10 +821,6 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
         result,
         growing: false,
       };
-      if (options.trace) {
-        const tag = result === err ? "ERR" : "OK";
-        console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
-      }
       if (offset > rightmostOffset) rightmostOffset = offset;
       return result;
     }
@@ -895,10 +871,6 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
       };
     }
     offset = endPos;
-    if (options.trace) {
-      const tag = result === err ? "ERR" : "OK";
-      console.log("  ".repeat(stack.length) + `[${name}]`, tag, `@${start}→${offset}`, result === err ? "" : JSON.stringify(result).slice(0, 60));
-    }
     if (offset > rightmostOffset) rightmostOffset = offset;
     return result;
   };
