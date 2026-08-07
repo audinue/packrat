@@ -789,7 +789,7 @@ const evaluateGrammar = (grammar: ResolvedGrammar, input: string, options: Parse
     const entry = memo[start]?.[startIndentKey];
     if (entry) {
       if (entry.growing) {
-        const index = stack.findIndex((e) => e.start === start && e.indentKey === startIndentKey);
+        const index = stack.findIndex((e) => e.name === name && e.start === start && e.indentKey === startIndentKey);
         if (index !== -1) {
           const owner = stack[index]!;
           owner.involved ??= new Set();
@@ -2101,7 +2101,7 @@ const buildGrammar = (grammar: Grammar): _GrammarParser => {
           const entry = ruleMemo[start]?.[startIndentKey];
           if (entry) {
             if (entry.growing) {
-              const index = stack.findIndex((e) => e.start === start && e.indentKey === startIndentKey);
+              const index = stack.findIndex((e) => e.name === name && e.start === start && e.indentKey === startIndentKey);
               if (index !== -1) {
                 const owner = stack[index]!;
                 owner.involved ??= new Set();
