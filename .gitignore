@@ -1,6 +1,9 @@
 # dependencies (bun install)
 node_modules
 
+# reference implementations (cloned repos)
+pegjs
+
 # output
 out
 dist
